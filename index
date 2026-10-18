@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0d3f7a" />
+<title>Monitora UPA</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ======================================================= -->
+  <!-- TELA 1 — CHECK-IN (chegada na UPA)                       -->
+  <!-- ======================================================= -->
+  <section id="screen-checkin" class="screen screen--dark">
+    <div class="status-clock">
+      <div class="clock-time" data-clock-time>--:--</div>
+      <div class="clock-date" data-clock-date>---</div>
+    </div>
+
+    <p class="location-hint">📍 Se o navegador pedir, permita a localização — assim identificamos em qual UPA você está automaticamente.</p>
+
+    <div class="notif-card">
+      <div class="notif-header">
+        <div class="notif-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z" fill="#1fa34d"/>
+          </svg>
+        </div>
+        <div class="notif-title">Monitora UPA</div>
+        <div class="notif-time">agora</div>
+      </div>
+
+      <p class="notif-question">Você está na UPA</p>
+      <select id="checkin-upa-select" class="upa-select">
+        <option value="" selected disabled>selecione</option>
+      </select>
+      <p class="notif-subtext">Nos ajude a melhorar o atendimento respondendo abaixo.</p>
+
+      <div class="response-row">
+        <button class="btn btn--outline btn--green" data-response="sim">Sim</button>
+        <button class="btn btn--outline btn--red" data-response="nao">Não</button>
+        <button class="btn btn--outline btn--blue" data-response="funcionario">Sou funcionário</button>
+      </div>
+
+      <div class="time-field">
+        <span>Você chegou às</span>
+        <span class="time-value" id="checkin-time">--:--</span>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn--pill btn--solid-green" id="btn-confirmar-chegada">Confirmar horário</button>
+        <button class="btn btn--pill btn--solid-gray" id="btn-corrigir-chegada">Corrigir o horário</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- TELA 2 — CHECK-OUT (saída da UPA)                        -->
+  <!-- ======================================================= -->
+  <section id="screen-checkout" class="screen screen--dark">
+    <div class="status-clock">
+      <div class="clock-time" data-clock-time>--:--</div>
+      <div class="clock-date" data-clock-date>---</div>
+    </div>
+
+    <!-- Variante normal: existe um check-in em andamento -->
+    <div class="notif-card" id="checkout-card-normal">
+      <div class="notif-header">
+        <div class="notif-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z" fill="#1fa34d"/>
+          </svg>
+        </div>
+        <div class="notif-title">Monitora UPA</div>
+        <div class="notif-time">agora</div>
+      </div>
+
+      <p class="notif-question">Atendimento finalizado?</p>
+      <p class="notif-subtext">Você saiu da UPA <span id="checkout-upa-nome">—</span>. Confirme o horário de saída.</p>
+
+      <div class="permanencia-box">
+        Tempo de permanência : <span id="permanencia-valor">--</span>
+      </div>
+
+      <div class="time-field">
+        <span>Saída registrada às</span>
+        <span class="time-value" id="checkout-time">--:--</span>
+      </div>
+
+      <div class="action-row action-row--three">
+        <button class="btn btn--pill btn--solid-green" id="btn-finalizar">Sim, finalizado</button>
+        <button class="btn btn--pill btn--solid-gray" id="btn-corrigir-saida">Corrigir o horário</button>
+        <button class="btn btn--pill btn--solid-red" id="btn-desisti">Não, desisti</button>
+      </div>
+    </div>
+
+    <!-- Variante retroativa: não há check-in em andamento neste aparelho -->
+    <div class="notif-card" id="checkout-card-retroativo">
+      <div class="notif-header">
+        <div class="notif-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z" fill="#1fa34d"/>
+          </svg>
+        </div>
+        <div class="notif-title">Monitora UPA</div>
+        <div class="notif-time">agora</div>
+      </div>
+
+      <p class="notif-question">Você quer encerrar um atendimento que ocorreu nas últimas 2 horas?</p>
+      <p class="notif-subtext">Sem problema — preencha os dados abaixo pra registrar.</p>
+
+      <p class="field-label">Qual unidade você foi atendido?</p>
+      <select id="retro-upa-select" class="upa-select">
+        <option value="" selected disabled>selecione</option>
+      </select>
+
+      <div class="time-field">
+        <span>Você chegou às</span>
+        <span class="time-value" id="retro-chegada-time" contenteditable="true">--:--</span>
+      </div>
+
+      <div class="time-field">
+        <span>Você saiu às</span>
+        <span class="time-value" id="retro-saida-time" contenteditable="true">--:--</span>
+      </div>
+
+      <div class="permanencia-box">
+        Tempo de permanência : <span id="retro-permanencia-valor">--</span>
+      </div>
+
+      <div class="action-row">
+        <button class="btn btn--pill btn--solid-green" id="btn-retro-confirmar">Registrar atendimento</button>
+        <button class="btn btn--pill btn--solid-gray" id="btn-retro-cancelar">Cancelar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- TELA 3 — INÍCIO (lista de UPAs próximas)                 -->
+  <!-- ======================================================= -->
+  <section id="screen-home" class="screen screen--light">
+    <header class="home-header">
+      <div class="active-banner" id="active-banner">
+        <span id="active-banner-text">Atendimento em andamento: -- min</span>
+        <span class="active-banner-cta">Finalizar?</span>
+      </div>
+      <div class="home-header-top">
+        <button class="icon-btn" id="btn-profile" aria-label="Perfil">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-menu" aria-label="Menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
+      </div>
+      <p class="home-greeting">Olá!</p>
+      <p class="home-subtitle">Abaixo estão as UPAs mais próximas de você</p>
+    </header>
+
+    <div class="home-body">
+      <div class="sort-row">
+        <button class="icon-btn-round" aria-label="Ordenar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+            <path d="M7 3v18M7 21l-4-4M7 21l4-4M17 21V3M17 3l-4 4M17 3l4 4"/>
+          </svg>
+        </button>
+        <span class="sort-label">Ordenar por:</span>
+        <button class="pill-toggle active" data-sort="tempo">Tempo Médio</button>
+        <button class="pill-toggle" data-sort="distancia">Distância</button>
+      </div>
+
+      <div class="upa-list" id="upa-list">
+        <p class="loading-msg">Carregando UPAs...</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= -->
+  <!-- BARRA DE PROTÓTIPO — apenas para navegar entre as telas  -->
+  <!-- durante os testes. Remova antes de publicar de verdade.  -->
+  <!-- ======================================================= -->
+  <nav class="proto-nav">
+    <button data-goto="screen-home">🏠 Início</button>
+    <button data-goto="screen-checkin">✅ Check-in</button>
+    <button data-goto="screen-checkout">🚪 Check-out</button>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
+</body>
+</html>
