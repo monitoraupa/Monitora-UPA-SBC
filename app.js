@@ -22,6 +22,12 @@ function getOrCreateDeviceId() {
 
 const DEVICE_ID = getOrCreateDeviceId();
 
+/* Regras de duração do atendimento */
+const CHAVE_ATIVO = 'monitora_upa_atendimento_ativo';
+const MIN_BLOQUEIO_MIN = 3;      // abaixo disso: bloqueia o registro
+const MIN_CONFIRMAR_MIN = 20;    // abaixo disso: pede confirmação
+const MAX_ATENDIMENTO_MIN = 360; // 6h: depois disso o atendimento é encerrado
+
 let sb = null;
 try {
   if (window.supabase && SUPABASE_URL.indexOf('SEU-PROJETO') === -1) {
@@ -241,6 +247,14 @@ function parseHoraParaData(textoHHMM, base = new Date()) {
   return d;
 }
 
+// Para horários de CHEGADA: se o horário digitado ficaria no futuro
+// (ex.: chegou 23:50 e agora são 00:10), assume o dia anterior.
+function parseHoraPassada(textoHHMM, ref = new Date()) {
+  const d = parseHoraParaData(textoHHMM, ref);
+  if (d.getTime() > ref.getTime() + 2 * 60000) d.setDate(d.getDate() - 1);
+  return d;
+}
+
 /* ============================================================
    RELÓGIO (atualiza em todas as telas que têm data-clock-time)
    ============================================================ */
@@ -267,6 +281,7 @@ function atualizarBannerAtivo(agora = new Date()) {
 
   const ativo = JSON.parse(ativoStr);
   const minutos = Math.max(0, Math.round((agora - new Date(ativo.horarioChegada)) / 60000));
+  if (minutos >= MAX_ATENDIMENTO_MIN) { banner.style.display = 'none'; return; }
   const cor = corPelaEspera(minutos);
 
   banner.className = `active-banner ${cor === 'wait-gray' ? 'wait-green' : cor}`;
@@ -297,6 +312,160 @@ const state = {
   ordenarPor: 'tempo',
   posicaoUsuario: null,
 };
+
+/* ============================================================
+   REGRAS ANTI-FRAUDE, CONFIRMAÇÃO, EXPIRAÇÃO, FEEDBACK, ACESSOS
+   ------------------------------------------------------------
+   As regras valem de verdade no BANCO (funções RPC no Supabase).
+   Aqui no navegador só damos feedback rápido e mensagens amigáveis.
+   ============================================================ */
+const MENSAGENS_ERRO = {
+  ATENDIMENTO_EM_ANDAMENTO: 'Você já tem um atendimento em andamento.',
+  AGUARDE_PARA_NOVO_ATENDIMENTO: 'Aguarde um pouco antes de registrar um novo atendimento.',
+  LIMITE_DIARIO: 'Limite diário de registros atingido. Tente novamente amanhã.',
+  TEMPO_MUITO_CURTO: 'Esse tempo é muito curto para um atendimento. Corrija o horário.',
+  TEMPO_MAXIMO_EXCEDIDO: 'O atendimento não pode passar de 6 horas.',
+  HORARIO_FUTURO: 'O horário não pode estar no futuro.',
+  HORARIO_MUITO_ANTIGO: 'Esse horário é muito antigo para ser registrado.',
+  SAIDA_ANTES_DA_CHEGADA: 'A saída precisa ser depois da chegada.',
+  ATENDIMENTO_SOBREPOSTO: 'Já existe um atendimento seu nesse período.',
+  ATENDIMENTO_NAO_ENCONTRADO: 'Atendimento não encontrado ou já encerrado.',
+};
+
+function erroAmigavel(err, padrao = 'Algo deu errado. Tente novamente.') {
+  const msg = (err && (err.message || err.details || '')) || '';
+  const chave = Object.keys(MENSAGENS_ERRO).find(k => msg.includes(k));
+  return chave ? MENSAGENS_ERRO[chave] : padrao;
+}
+
+function erroTem(err, codigo) {
+  return ((err && err.message) || '').includes(codigo);
+}
+
+/* ---------- Pop-up de aviso (substitui o alert() do navegador) ---------- */
+let avisoResolver = null;
+const AVISO_TIPOS = {
+  sucesso: { icone: '✓', titulo: 'Tudo certo!' },
+  erro:    { icone: '!', titulo: 'Ops!' },
+  aviso:   { icone: '!', titulo: 'Atenção' }
+};
+
+function avisar(texto, tipo = 'aviso') {
+  return new Promise(resolve => {
+    if (avisoResolver) avisoResolver();            // fecha o aviso anterior, se houver
+    const cfg = AVISO_TIPOS[tipo] || AVISO_TIPOS.aviso;
+    const modal = document.getElementById('modal-aviso');
+    const icone = document.getElementById('modal-aviso-icone');
+
+    icone.textContent = cfg.icone;
+    icone.className = `aviso-icone aviso-icone--${tipo in AVISO_TIPOS ? tipo : 'aviso'}`;
+    document.getElementById('modal-aviso-titulo').textContent = cfg.titulo;
+    document.getElementById('modal-aviso-texto').textContent = texto;
+
+    const ok = document.getElementById('modal-aviso-ok');
+    const fim = () => { modal.classList.remove('open'); ok.onclick = null; avisoResolver = null; resolve(); };
+    avisoResolver = fim;
+    ok.onclick = fim;
+    modal.classList.add('open');
+    ok.focus();
+  });
+}
+
+function confirmarDialog(texto) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('modal-confirm');
+    const ok = document.getElementById('modal-confirm-ok');
+    const cancel = document.getElementById('modal-confirm-cancel');
+    document.getElementById('modal-confirm-text').textContent = texto;
+    modal.classList.add('open');
+    const fim = v => { modal.classList.remove('open'); ok.onclick = cancel.onclick = null; resolve(v); };
+    ok.onclick = () => fim(true);
+    cancel.onclick = () => fim(false);
+  });
+}
+
+// Bloqueia tempos absurdamente curtos e pede confirmação para < 20 min.
+async function validarDuracaoFinalizado(minutos) {
+  if (isNaN(minutos) || minutos < 0) {
+    avisar('Verifique os horários: a saída precisa ser depois da chegada.');
+    return false;
+  }
+  if (minutos < MIN_BLOQUEIO_MIN) {
+    avisar('Esse tempo é muito curto para um atendimento. Corrija o horário.');
+    return false;
+  }
+  if (minutos > MAX_ATENDIMENTO_MIN) {
+    avisar('O atendimento não pode passar de 6 horas.');
+    return false;
+  }
+  if (minutos < MIN_CONFIRMAR_MIN) {
+    return confirmarDialog(`Você tem certeza que o seu atendimento demorou ${minutos} ${minutos === 1 ? 'minuto' : 'minutos'}?`);
+  }
+  return true;
+}
+
+// Encerra no aparelho um atendimento que passou de 6h. Retorna true se encerrou.
+function verificarExpiracao() {
+  const s = localStorage.getItem(CHAVE_ATIVO);
+  if (!s) return false;
+  const ativo = JSON.parse(s);
+  if (Date.now() - new Date(ativo.horarioChegada).getTime() < MAX_ATENDIMENTO_MIN * 60000) return false;
+
+  localStorage.removeItem(CHAVE_ATIVO);
+  atualizarBannerAtivo();
+  mostrarTela('screen-home');
+  if (sb) sb.rpc('encerrar_expirados').then(() => carregarUpas());
+  avisar('Seu atendimento passou de 6 horas e foi encerrado automaticamente. Ele não entra no tempo médio.');
+  return true;
+}
+setInterval(verificarExpiracao, 30000);
+
+/* ---------- Feedback (estrelas + comentário) ---------- */
+let feedbackAtendimentoId = null;
+let feedbackNota = 0;
+
+function pintarEstrelas(n) {
+  document.querySelectorAll('#stars button').forEach(b =>
+    b.classList.toggle('on', Number(b.dataset.star) <= n));
+}
+function abrirFeedback(atendimentoId) {
+  if (!atendimentoId) return;
+  feedbackAtendimentoId = atendimentoId;
+  feedbackNota = 0;
+  document.getElementById('feedback-comentario').value = '';
+  pintarEstrelas(0);
+  document.getElementById('modal-feedback').classList.add('open');
+}
+function fecharFeedback() {
+  document.getElementById('modal-feedback').classList.remove('open');
+}
+
+document.querySelectorAll('#stars button').forEach(b =>
+  b.addEventListener('click', () => { feedbackNota = Number(b.dataset.star); pintarEstrelas(feedbackNota); }));
+
+document.getElementById('btn-pular-feedback').addEventListener('click', fecharFeedback);
+
+document.getElementById('btn-enviar-feedback').addEventListener('click', async () => {
+  if (!feedbackNota) { avisar('Escolha de 1 a 5 estrelas.'); return; }
+  const { error } = await sb.rpc('enviar_feedback', {
+    p_atendimento_id: feedbackAtendimentoId,
+    p_dispositivo_id: state.deviceId,
+    p_estrelas: feedbackNota,
+    p_comentario: document.getElementById('feedback-comentario').value
+  });
+  if (error) { avisar(erroAmigavel(error), 'erro'); console.error(error); return; }
+  fecharFeedback();
+  avisar('Obrigado pelo feedback! 💙', 'sucesso');
+});
+
+/* ---------- Contagem de acessos (1 por aparelho por dia, no banco) ---------- */
+function registrarAcesso() {
+  if (!sb || sessionStorage.getItem('monitora_upa_acesso_ok')) return;
+  sb.rpc('registrar_acesso', { p_dispositivo_id: state.deviceId }).then(({ error }) => {
+    if (error) console.warn('Não foi possível registrar o acesso:', error);
+    else sessionStorage.setItem('monitora_upa_acesso_ok', '1');
+  });
+}
 
 /* ============================================================
    TELA INICIAL — LISTA DE UPAS
@@ -344,7 +513,8 @@ async function carregarUpas() {
   const { data: emAndamento } = await sb
     .from('atendimentos')
     .select('upa_id, horario_chegada')
-    .eq('status', 'em_andamento');
+    .eq('status', 'em_andamento')
+    .gte('horario_chegada', desde);
 
   // Busca um histórico mais longo (30 dias) exclusivamente para TREINAR
   // o modelo de regressão por horário do dia — precisa de mais volume
@@ -525,7 +695,7 @@ document.getElementById('btn-corrigir-chegada').addEventListener('click', () => 
 
 document.getElementById('btn-confirmar-chegada').addEventListener('click', async () => {
   if (!respostaSelecionada) {
-    alert('Toque em "Sim", "Não" ou "Sou funcionário" antes de confirmar.');
+    avisar('Toque em "Sim", "Não" ou "Sou funcionário" antes de confirmar.');
     return;
   }
   if (respostaSelecionada === 'nao') {
@@ -533,42 +703,41 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
     return;
   }
   if (respostaSelecionada === 'funcionario') {
-    alert('Obrigado! Check-ins de funcionários não entram no tempo médio.');
+    avisar('Obrigado! Check-ins de funcionários não entram no tempo médio.', 'sucesso');
     mostrarTela('screen-home');
     return;
   }
   if (!state.upaSelecionada) {
-    alert('Selecione a UPA no menu acima.');
+    avisar('Selecione a UPA no menu acima.');
     return;
   }
   if (!sb) {
-    alert('Configure o Supabase em app.js para salvar o check-in.');
+    avisar('Configure o Supabase em app.js para salvar o check-in.');
     return;
   }
 
-  const horario = parseHoraParaData(document.getElementById('checkin-time').textContent);
+  const horario = parseHoraPassada(document.getElementById('checkin-time').textContent);
 
-  const { data, error } = await sb.from('atendimentos').insert({
-    upa_id: state.upaSelecionada.id,
-    dispositivo_id: state.deviceId,
-    horario_chegada: horario.toISOString(),
-    status: 'em_andamento'
-  }).select().single();
+  const { data: novoId, error } = await sb.rpc('iniciar_atendimento', {
+    p_upa_id: state.upaSelecionada.id,
+    p_dispositivo_id: state.deviceId,
+    p_horario_chegada: horario.toISOString()
+  });
 
   if (error) {
-    alert('Não foi possível registrar a chegada.');
+    avisar(erroAmigavel(error, 'Não foi possível registrar a chegada.'), 'erro');
     console.error(error);
     return;
   }
 
   localStorage.setItem('monitora_upa_atendimento_ativo', JSON.stringify({
-    id: data.id,
+    id: novoId,
     upaId: state.upaSelecionada.id,
     upaNome: state.upaSelecionada.nome,
     horarioChegada: horario.toISOString()
   }));
 
-  alert('Chegada registrada! Toque em "Check-out" quando for embora.');
+  avisar('Chegada registrada! Toque em "Check-out" quando for embora.', 'sucesso');
   mostrarTela('screen-home');
 });
 
@@ -576,6 +745,7 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
    TELA DE CHECK-OUT (saída)
    ============================================================ */
 function carregarCheckout() {
+  if (verificarExpiracao()) return;
   const cardNormal = document.getElementById('checkout-card-normal');
   const cardRetro = document.getElementById('checkout-card-retroativo');
   const ativoStr = localStorage.getItem('monitora_upa_atendimento_ativo');
@@ -636,45 +806,37 @@ function atualizarPermanenciaRetro() {
 document.getElementById('btn-retro-confirmar').addEventListener('click', async () => {
   const upaId = document.getElementById('retro-upa-select').value;
   if (!upaId) {
-    alert('Selecione a unidade onde você foi atendido.');
+    avisar('Selecione a unidade onde você foi atendido.');
     return;
   }
   if (!sb) {
-    alert('Configure o Supabase em app.js para salvar o atendimento.');
+    avisar('Configure o Supabase em app.js para salvar o atendimento.');
     return;
   }
 
-  const chegada = parseHoraParaData(document.getElementById('retro-chegada-time').textContent);
   const saida = parseHoraParaData(document.getElementById('retro-saida-time').textContent);
+  const chegada = parseHoraPassada(document.getElementById('retro-chegada-time').textContent, saida);
   const minutos = Math.round((saida - chegada) / 60000);
 
-  if (isNaN(minutos) || minutos < 0) {
-    alert('Verifique os horários: a saída precisa ser depois da chegada.');
-    return;
-  }
-  if (minutos > 120) {
-    const continuar = confirm('Esse período passa de 2 horas. Registrar mesmo assim?');
-    if (!continuar) return;
-  }
+  if (!(await validarDuracaoFinalizado(minutos))) return;
 
-  const { error } = await sb.from('atendimentos').insert({
-    upa_id: upaId,
-    dispositivo_id: state.deviceId,
-    horario_chegada: chegada.toISOString(),
-    horario_saida: saida.toISOString(),
-    tempo_permanencia_minutos: minutos,
-    status: 'finalizado'
+  const { data: novoId, error } = await sb.rpc('registrar_retroativo', {
+    p_upa_id: upaId,
+    p_dispositivo_id: state.deviceId,
+    p_chegada: chegada.toISOString(),
+    p_saida: saida.toISOString()
   });
 
   if (error) {
-    alert('Não foi possível registrar o atendimento.');
+    avisar(erroAmigavel(error, 'Não foi possível registrar o atendimento.'), 'erro');
     console.error(error);
     return;
   }
 
-  alert('Atendimento registrado. Obrigado por ajudar!');
+  await avisar('Atendimento registrado. Obrigado por ajudar!', 'sucesso');
   mostrarTela('screen-home');
   carregarUpas();
+  abrirFeedback(novoId);
 });
 
 document.getElementById('btn-retro-cancelar').addEventListener('click', () => {
@@ -688,33 +850,55 @@ document.getElementById('btn-corrigir-saida').addEventListener('click', () => {
 });
 
 async function finalizarAtendimento(status) {
-  const ativoStr = localStorage.getItem('monitora_upa_atendimento_ativo');
+  const ativoStr = localStorage.getItem(CHAVE_ATIVO);
   if (!ativoStr) { mostrarTela('screen-home'); return; }
   if (!sb) {
-    alert('Configure o Supabase em app.js para salvar a saída.');
+    avisar('Configure o Supabase em app.js para salvar a saída.');
     return;
   }
 
   const ativo = JSON.parse(ativoStr);
   const saida = parseHoraParaData(document.getElementById('checkout-time').textContent);
   const chegada = new Date(ativo.horarioChegada);
-  const minutos = Math.max(0, Math.round((saida - chegada) / 60000));
+  const minutos = Math.round((saida - chegada) / 60000);
 
-  const { error } = await sb.from('atendimentos').update({
-    horario_saida: saida.toISOString(),
-    tempo_permanencia_minutos: minutos,
-    status
-  }).eq('id', ativo.id);
+  // Só "finalizado" entra na média, então só ele passa pela validação de duração.
+  if (status === 'finalizado' && !(await validarDuracaoFinalizado(minutos))) return;
+  if (status === 'desistiu' && (isNaN(minutos) || minutos < 0)) {
+    avisar('Verifique os horários: a saída precisa ser depois da chegada.');
+    return;
+  }
+
+  const { data: resultado, error } = await sb.rpc('finalizar_atendimento', {
+    p_id: ativo.id,
+    p_dispositivo_id: state.deviceId,
+    p_horario_saida: saida.toISOString(),
+    p_status: status
+  });
 
   if (error) {
-    alert('Não foi possível registrar a saída.');
+    // Se o atendimento já não existe mais no banco, limpa o estado local para não travar o app
+    if (erroTem(error, 'ATENDIMENTO_NAO_ENCONTRADO')) {
+      localStorage.removeItem(CHAVE_ATIVO);
+      atualizarBannerAtivo();
+      mostrarTela('screen-home');
+      carregarUpas();
+    }
+    avisar(erroAmigavel(error, 'Não foi possível registrar a saída.'), 'erro');
     console.error(error);
     return;
   }
 
-  localStorage.removeItem('monitora_upa_atendimento_ativo');
+  localStorage.removeItem(CHAVE_ATIVO);
+  atualizarBannerAtivo();
   mostrarTela('screen-home');
   carregarUpas();
+
+  if (resultado === -1) {
+    avisar('Seu atendimento passou de 6 horas e foi encerrado automaticamente. Ele não entra no tempo médio.');
+    return;
+  }
+  if (status === 'finalizado') abrirFeedback(ativo.id);
 }
 
 document.getElementById('btn-finalizar').addEventListener('click', () => finalizarAtendimento('finalizado'));
@@ -729,7 +913,7 @@ document.querySelectorAll('.proto-nav [data-goto]').forEach(btn => {
     if (alvo === 'screen-checkin') {
       const upa = state.upaSelecionada || state.upasCache[0];
       if (upa) iniciarCheckin(upa);
-      else alert('Nenhuma UPA carregada ainda. Verifique o Supabase.');
+      else avisar('Nenhuma UPA carregada ainda. Verifique o Supabase.');
       return;
     }
     if (alvo === 'screen-checkout') {
@@ -770,6 +954,8 @@ function sugerirUpaMaisProxima() {
    INICIALIZAÇÃO
    ============================================================ */
 (async function init() {
+  registrarAcesso();
+  verificarExpiracao();
   const ativoStr = localStorage.getItem('monitora_upa_atendimento_ativo');
   if (ativoStr) { mostrarTela('screen-home'); } else { iniciarCheckin(null); }
 
