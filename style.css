@@ -180,7 +180,7 @@ body{
 .home-header{
   background:radial-gradient(circle at 25% 12%, var(--blue-light), var(--blue-mid) 55%, var(--blue-dark) 100%);
   color:#fff;
-  padding:24px 20px 44px;
+  padding:40px 20px 44px;
   border-radius:0 0 28px 28px;
 }
 .home-header-top{ display:flex; justify-content:space-between; margin-bottom:22px; }
@@ -241,6 +241,52 @@ body{
   font-size:0.72rem; font-family:inherit;
 }
 .proto-nav button:active{ background:rgba(255,255,255,.15); }
+
+/* ===================== MODAIS ===================== */
+.modal{
+  display:none; position:fixed; inset:0; z-index:1000;
+  background:rgba(0,0,0,.55); align-items:center; justify-content:center; padding:20px;
+}
+.modal.open{ display:flex; }
+.modal-box{
+  background:var(--gray-bg); color:#111; width:100%; max-width:380px;
+  border-radius:var(--card-radius); padding:22px; box-shadow:0 20px 45px rgba(0,0,0,.35);
+}
+.modal-title{ font-weight:700; font-size:1.05rem; margin-bottom:10px; line-height:1.35; }
+
+/* Estrelas do feedback */
+.stars{ display:flex; justify-content:center; gap:6px; margin:10px 0 14px; }
+.stars button{
+  background:none; border:none; font-size:2.4rem; line-height:1;
+  color:#c4c9d2; cursor:pointer; transition:transform .1s, color .1s;
+}
+.stars button.on{ color:var(--yellow); }
+.stars button:active{ transform:scale(1.15); }
+
+#feedback-comentario{
+  width:100%; min-height:80px; resize:vertical; border:none; border-radius:12px;
+  background:#e2e5ea; padding:12px 14px; font-family:inherit; font-size:0.9rem;
+  color:#222; margin-bottom:16px;
+}
+
+/* ===================== MODAL DE AVISO ===================== */
+.modal--aviso{ z-index:1100; }   /* fica acima do modal de feedback */
+.modal--aviso .modal-box{ text-align:center; }
+.modal--aviso .notif-header{ justify-content:flex-start; text-align:left; }
+
+.aviso-icone{
+  width:56px; height:56px; border-radius:50%;
+  margin:6px auto 12px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.9rem; font-weight:800; color:#fff;
+}
+.aviso-icone--sucesso{ background:var(--green); }
+.aviso-icone--erro{ background:var(--red); }
+.aviso-icone--aviso{ background:var(--yellow); }
+
+.aviso-titulo{ font-weight:700; font-size:1.15rem; color:#111; margin-bottom:6px; }
+.aviso-texto{ color:#4b5563; font-size:0.95rem; line-height:1.4; margin-bottom:18px; }
+.aviso-ok{ width:100%; flex:none; }
 
 /* ===================== TELAS PEQUENAS ===================== */
 @media (max-width:340px){
