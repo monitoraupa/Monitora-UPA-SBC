@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=18" />
+<link rel="stylesheet" href="style.css?v=20" />
 </head>
 <body>
 
@@ -73,6 +73,11 @@
 
       <div class="permanencia-box">
         Tempo de permanência : <span id="permanencia-valor">--</span>
+      </div>
+
+      <div class="time-field">
+        <span>Você chegou às</span>
+        <span class="time-value" id="checkout-chegada-time">--:--</span>
       </div>
 
       <div class="time-field">
@@ -216,6 +221,32 @@
   </div>
 
   <!-- ======================================================= -->
+  <!-- MODAL DE DESISTÊNCIA (motivo + comentário opcional)      -->
+  <!-- ======================================================= -->
+  <div class="modal" id="modal-desistencia">
+    <div class="modal-box">
+      <p class="fb-title"><span class="fb-icon">💬</span> Entendemos que você desistiu do atendimento. O que aconteceu?</p>
+
+      <div class="motivo-lista" role="radiogroup" aria-label="Motivo da desistência">
+        <label class="motivo-opcao"><input type="radio" name="motivo" value="espera_longa"> A espera estava muito longa</label>
+        <label class="motivo-opcao"><input type="radio" name="motivo" value="outra_unidade"> Fui para outra UPA ou hospital</label>
+        <label class="motivo-opcao"><input type="radio" name="motivo" value="melhorou"> Meu problema melhorou</label>
+        <label class="motivo-opcao"><input type="radio" name="motivo" value="saida_necessaria"> Precisei sair por outro motivo</label>
+        <label class="motivo-opcao"><input type="radio" name="motivo" value="outro"> Outro</label>
+      </div>
+
+      <p class="notif-subtext fb-sub">Quer detalhar? (opcional)</p>
+      <textarea id="desistencia-comentario" maxlength="500"
+        placeholder="Escreva aqui se quiser contar mais"></textarea>
+
+      <div class="action-row">
+        <button class="btn btn--pill btn--solid-green" id="btn-enviar-desistencia">Enviar</button>
+        <button class="btn btn--pill btn--solid-gray" id="btn-pular-desistencia">Agora não</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
   <!-- MODAL DE INFORMAÇÃO (ícone "i" do painel)                -->
   <!-- ======================================================= -->
   <div class="modal" id="modal-info" role="dialog" aria-modal="true" aria-labelledby="modal-info-titulo">
@@ -257,6 +288,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
