@@ -304,6 +304,7 @@ const MENSAGENS_ERRO = {
   HORARIO_MUITO_ANTIGO: 'Só é possível registrar atendimentos das últimas 8 horas.',
   SAIDA_ANTES_DA_CHEGADA: 'A saída precisa ser depois da chegada.',
   chk_saida_depois_chegada: 'A saída precisa ser depois da chegada. Se você acabou de chegar, espere um minutinho ou [[corrija o horário]].',
+  CHEGADA_MUITO_ANTIGA: 'Esse horário de chegada é muito antigo. [[Corrija o horário]].',
   ATENDIMENTO_SOBREPOSTO: 'Você já tem um atendimento registrado nesse período. [[Corrija o horário]].',
   ATENDIMENTO_NAO_ENCONTRADO: 'Atendimento não encontrado ou já encerrado.',
   UPA_EM_REFORMA: 'Esta UPA está em reforma e não está registrando atendimentos no momento.',
@@ -615,14 +616,14 @@ async function carregarUpas() {
   // Busca os finalizados dentro da janela mais longa (6h) — a função
   // de cálculo decide sozinha se usa só os últimos 2h ou recorre aos 6h.
   const { data: finalizados } = await sb
-    .from('atendimentos')
+    .from('painel_atendimentos')
     .select('upa_id, tempo_permanencia_minutos, horario_saida')
     .eq('status', 'finalizado')
     .gte('horario_saida', desde);
 
   // Busca quem está esperando agora (sinal ao vivo).
   const { data: emAndamento } = await sb
-    .from('atendimentos')
+    .from('painel_atendimentos')
     .select('upa_id, horario_chegada')
     .eq('status', 'em_andamento')
     .gte('horario_chegada', desde);
@@ -631,7 +632,7 @@ async function carregarUpas() {
   // histórica por faixa de horário (quando não há dados recentes).
   const desdeHistorico = new Date(agora.getTime() - DIAS_HISTORICO * 24 * 60 * 60 * 1000).toISOString();
   const { data: finalizadosHistorico } = await sb
-    .from('atendimentos')
+    .from('painel_atendimentos')
     .select('upa_id, tempo_permanencia_minutos, horario_chegada, horario_saida')
     .eq('status', 'finalizado')
     .gte('horario_saida', desdeHistorico);
