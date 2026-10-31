@@ -333,6 +333,8 @@ const MENSAGENS_ERRO = {
   UPA_EM_REFORMA: 'Esta UPA está em reforma e não está registrando atendimentos no momento.',
   DISPOSITIVO_INVALIDO: 'Não foi possível identificar este aparelho. Recarregue a página e tente de novo.',
   STATUS_INVALIDO: 'Ação inválida. Recarregue a página e tente de novo.',
+  NOTA_INVALIDA: 'Escolha de 1 a 5 estrelas nas duas perguntas.',
+  FEEDBACK_JA_ENVIADO: 'Você já enviou o feedback deste atendimento. Obrigado!',
 };
 
 function erroAmigavel(err, padrao = 'Algo deu errado.') {
@@ -447,37 +449,51 @@ function verificarExpiracao() {
 }
 setInterval(verificarExpiracao, 30000);
 
-/* ---------- Feedback (estrelas + comentário) ---------- */
+/* ---------- Feedback (2 perguntas em estrelas + comentário) ----------
+   O tempo de espera NÃO é enviado pelo navegador: a função
+   enviar_feedback no banco busca o tempo do atendimento e grava
+   junto do feedback (ver migracao_feedback.sql). */
 let feedbackAtendimentoId = null;
-let feedbackNota = 0;
+const feedbackNotas = { atendimento: 0, app: 0 };
 
-function pintarEstrelas(n) {
-  document.querySelectorAll('#stars button').forEach(b =>
+function pintarEstrelas(grupo, n) {
+  document.querySelectorAll(`#stars-${grupo} button`).forEach(b =>
     b.classList.toggle('on', Number(b.dataset.star) <= n));
 }
 function abrirFeedback(atendimentoId) {
   if (!atendimentoId) return;
   feedbackAtendimentoId = atendimentoId;
-  feedbackNota = 0;
+  feedbackNotas.atendimento = 0;
+  feedbackNotas.app = 0;
   document.getElementById('feedback-comentario').value = '';
-  pintarEstrelas(0);
+  pintarEstrelas('atendimento', 0);
+  pintarEstrelas('app', 0);
   document.getElementById('modal-feedback').classList.add('open');
 }
 function fecharFeedback() {
   document.getElementById('modal-feedback').classList.remove('open');
 }
 
-document.querySelectorAll('#stars button').forEach(b =>
-  b.addEventListener('click', () => { feedbackNota = Number(b.dataset.star); pintarEstrelas(feedbackNota); }));
+['atendimento', 'app'].forEach(grupo => {
+  document.querySelectorAll(`#stars-${grupo} button`).forEach(b =>
+    b.addEventListener('click', () => {
+      feedbackNotas[grupo] = Number(b.dataset.star);
+      pintarEstrelas(grupo, feedbackNotas[grupo]);
+    }));
+});
 
 document.getElementById('btn-pular-feedback').addEventListener('click', fecharFeedback);
 
 document.getElementById('btn-enviar-feedback').addEventListener('click', async () => {
-  if (!feedbackNota) { avisar('Escolha de 1 a 5 estrelas.'); return; }
+  if (!feedbackNotas.atendimento || !feedbackNotas.app) {
+    avisar('Escolha de 1 a 5 estrelas nas duas perguntas.');
+    return;
+  }
   const { error } = await sb.rpc('enviar_feedback', {
     p_atendimento_id: feedbackAtendimentoId,
     p_dispositivo_id: state.deviceId,
-    p_estrelas: feedbackNota,
+    p_estrelas_atendimento: feedbackNotas.atendimento,
+    p_estrelas_app: feedbackNotas.app,
     p_comentario: document.getElementById('feedback-comentario').value
   });
   if (error) { avisar(erroAmigavel(error), 'erro'); console.error(error); return; }
