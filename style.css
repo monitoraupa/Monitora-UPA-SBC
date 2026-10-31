@@ -359,3 +359,41 @@ body{
   margin-top:4px; max-width:210px;
 }
 .upa-endereco.open{ display:block; }
+
+/* ===================== SELETOR DE UPA (dropdown com a identidade do app) ===================== */
+.cs{ position:relative; width:100%; margin-bottom:14px; }
+.cs .upa-select{ display:none; }              /* o <select> nativo fica escondido (guarda o valor) */
+.cs-trigger{
+  width:100%; display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#e2e5ea; border:2px solid transparent; border-radius:12px;
+  padding:13px 14px; font-family:inherit; font-weight:600; font-size:0.92rem;
+  color:#222; text-align:left; cursor:pointer;
+  transition:border-color .15s, background .15s;
+}
+.cs-trigger.placeholder .cs-label{ color:var(--gray-text); }
+.cs-label{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cs-chevron{ flex-shrink:0; color:var(--blue-accent); transition:transform .2s; }
+.cs.open .cs-trigger{ border-color:var(--blue-accent); background:#dbe3ee; }
+.cs.open .cs-chevron{ transform:rotate(180deg); }
+
+.cs-panel{
+  display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:50;
+  background:#fff; border-radius:14px; padding:6px;
+  box-shadow:0 14px 34px rgba(8,44,86,.28);
+  border:1px solid #d9dde3;
+  max-height:260px; overflow-y:auto; overscroll-behavior:contain;
+}
+.cs.open .cs-panel{ display:block; }
+.cs-option{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:12px 12px; border:none; background:none; border-radius:10px;
+  font-family:inherit; font-size:0.9rem; font-weight:600; color:#222;
+  text-align:left; cursor:pointer;
+}
+.cs-option + .cs-option{ margin-top:2px; }
+.cs-option:hover, .cs-option.focus{ background:#eef2f8; }
+.cs-option.selected{ background:#dbe3ee; color:var(--blue-dark); }
+.cs-option .cs-opt-text{ flex:1; min-width:0; }
+.cs-option .cs-check{ color:var(--blue-accent); font-weight:800; opacity:0; }
+.cs-option.selected .cs-check{ opacity:1; }
+.cs-option.em-reforma{ color:var(--reforma); }
