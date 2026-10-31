@@ -5,7 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=20" />
+<link rel="stylesheet" href="style.css?v=21" />
+<style>
+/* Pop-up de desistência e link "Corrija o horário" (ficam aqui para carregar junto com a página) */
+#desistencia-comentario{
+  width:100%; min-height:80px; resize:vertical; border:none; border-radius:12px;
+  background:#e2e5ea; padding:12px 14px; font-family:inherit; font-size:0.9rem;
+  color:#222; margin-bottom:16px;
+}
+.motivo-lista{ display:flex; flex-direction:column; gap:8px; margin:12px 0 6px; }
+.motivo-opcao{
+  display:flex; align-items:center; gap:10px;
+  background:#e2e5ea; border:2px solid transparent; border-radius:12px;
+  padding:12px 14px; font-size:0.9rem; font-weight:600; color:#222; cursor:pointer;
+}
+.motivo-opcao input{ width:18px; height:18px; accent-color:#2f6fd1; flex-shrink:0; }
+.motivo-opcao.selected{ background:#dbe3ee; border-color:#2f6fd1; }
+.aviso-link{
+  background:none; border:none; padding:0; margin:0;
+  font:inherit; font-weight:700; color:#2f6fd1;
+  text-decoration:underline; cursor:pointer;
+}
+</style>
 </head>
 <body>
 
@@ -45,8 +66,8 @@
       </div>
 
       <div class="action-row">
-        <button class="btn btn--pill btn--solid-green" id="btn-confirmar-chegada">Confirmar horário</button>
         <button class="btn btn--pill btn--solid-gray" id="btn-corrigir-chegada">Corrigir o horário</button>
+        <button class="btn btn--pill btn--solid-green" id="btn-confirmar-chegada">Confirmar horário</button>
       </div>
     </div>
   </section>
@@ -123,8 +144,8 @@
       </div>
 
       <div class="action-row">
-        <button class="btn btn--pill btn--solid-green" id="btn-retro-confirmar">Registrar atendimento</button>
         <button class="btn btn--pill btn--solid-gray" id="btn-retro-cancelar">Cancelar</button>
+        <button class="btn btn--pill btn--solid-green" id="btn-retro-confirmar">Registrar atendimento</button>
       </div>
     </div>
   </section>
@@ -288,6 +309,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>
