@@ -635,7 +635,16 @@ function renderizarLista(upas) {
     card.className = `upa-card ${corClasse}`;
     card.innerHTML = `
       <div>
-        <div class="upa-name">${u.nome}</div>
+        <div class="upa-name-row">
+          <button type="button" class="addr-btn" aria-label="Ver endereço da UPA" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/>
+              <circle cx="12" cy="9.5" r="2.5"/>
+            </svg>
+          </button>
+          <div class="upa-name">${u.nome}</div>
+        </div>
+        <div class="upa-endereco"></div>
         <div class="upa-distance">${u.distanciaKm !== null ? u.distanciaKm.toFixed(1).replace('.', ',') + ' km' : 'distância indisponível'}</div>
         ${avisoConfianca}
       </div>
@@ -643,6 +652,18 @@ function renderizarLista(upas) {
         ? '<div class="upa-reforma">🚧 Em reforma</div>'
         : `<div class="upa-wait ${corClasse}">${formatarDuracao(u.tempoMedio)}</div>`}
     `;
+
+    // Endereço: abre/fecha ao clicar no ícone (sem iniciar o check-in)
+    const addrBtn = card.querySelector('.addr-btn');
+    const addrBox = card.querySelector('.upa-endereco');
+    addrBox.textContent = u.endereco || 'Endereço não informado';
+    addrBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const aberto = addrBox.classList.toggle('open');
+      addrBtn.classList.toggle('open', aberto);
+      addrBtn.setAttribute('aria-expanded', aberto);
+    });
+
     card.addEventListener('click', () => iniciarCheckin(u));
     lista.appendChild(card);
   });
