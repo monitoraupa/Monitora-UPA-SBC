@@ -300,6 +300,8 @@ document.getElementById('active-banner').addEventListener('click', () => {
 function mostrarTela(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.proto-nav [data-goto]').forEach(b =>
+    b.classList.toggle('active', b.dataset.goto === id));
 }
 
 /* ============================================================
@@ -480,6 +482,14 @@ function fecharFeedback() {
       feedbackNotas[grupo] = Number(b.dataset.star);
       pintarEstrelas(grupo, feedbackNotas[grupo]);
     }));
+});
+
+/* Ícone "i" do painel (tela inicial) */
+document.getElementById('home-info-btn').addEventListener('click', () => {
+  const btn = document.getElementById('home-info-btn');
+  const balao = document.getElementById('home-info-balloon');
+  balao.hidden = !balao.hidden;
+  btn.setAttribute('aria-expanded', String(!balao.hidden));
 });
 
 document.getElementById('btn-pular-feedback').addEventListener('click', fecharFeedback);
@@ -1027,8 +1037,9 @@ function sugerirUpaMaisProxima() {
 (async function init() {
   registrarAcesso();
   verificarExpiracao();
-  const ativoStr = localStorage.getItem('monitora_upa_atendimento_ativo');
-  if (ativoStr) { mostrarTela('screen-home'); } else { iniciarCheckin(null); }
+  // A primeira tela é sempre o painel (lista de UPAs). O check-in abre
+  // quando a pessoa toca em uma UPA da lista.
+  mostrarTela('screen-home');
 
   state.posicaoUsuario = await obterLocalizacao();
   await carregarUpas();
