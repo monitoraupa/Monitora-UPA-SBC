@@ -330,12 +330,34 @@ const MENSAGENS_ERRO = {
   SAIDA_ANTES_DA_CHEGADA: 'A saída precisa ser depois da chegada.',
   ATENDIMENTO_SOBREPOSTO: 'Já existe um atendimento seu nesse período.',
   ATENDIMENTO_NAO_ENCONTRADO: 'Atendimento não encontrado ou já encerrado.',
+  UPA_EM_REFORMA: 'Esta UPA está em reforma e não está registrando atendimentos no momento.',
+  DISPOSITIVO_INVALIDO: 'Não foi possível identificar este aparelho. Recarregue a página e tente de novo.',
+  STATUS_INVALIDO: 'Ação inválida. Recarregue a página e tente de novo.',
 };
 
-function erroAmigavel(err, padrao = 'Algo deu errado. Tente novamente.') {
-  const msg = (err && (err.message || err.details || '')) || '';
+function erroAmigavel(err, padrao = 'Algo deu errado.') {
+  const msg = String((err && (err.message || err.details)) || '');
+  const codigo = String((err && err.code) || '');
+
+  // 1) regras do nosso banco (limite diário, tempo curto, etc.)
   const chave = Object.keys(MENSAGENS_ERRO).find(k => msg.includes(k));
-  return chave ? MENSAGENS_ERRO[chave] : padrao;
+  if (chave) return MENSAGENS_ERRO[chave];
+
+  // 2) problemas conhecidos de infraestrutura
+  if (codigo === 'PGRST202' || /could not find the function|schema cache/i.test(msg)) {
+    return 'O banco de dados ainda não foi atualizado (função não encontrada). Rode o atualizacao.sql no Supabase.';
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+    return 'Sem conexão com a internet. Verifique e tente novamente.';
+  }
+  if (codigo === '23505') return MENSAGENS_ERRO.ATENDIMENTO_EM_ANDAMENTO;
+  if (codigo === '23503') return 'Unidade (UPA) inválida. Atualize a página e escolha a unidade novamente.';
+  if (codigo === '42501' || /permission denied|row-level security/i.test(msg)) {
+    return 'Sem permissão para essa ação no banco de dados. Confira se o atualizacao.sql foi executado por completo.';
+  }
+
+  // 3) qualquer outro: mostra o motivo técnico em vez de esconder
+  return msg ? `${padrao} Motivo: ${msg}` : padrao;
 }
 
 function erroTem(err, codigo) {
@@ -347,7 +369,8 @@ let avisoResolver = null;
 const AVISO_TIPOS = {
   sucesso: { icone: '✓', titulo: 'Tudo certo!' },
   erro:    { icone: '!', titulo: 'Ops!' },
-  aviso:   { icone: '!', titulo: 'Atenção' }
+  aviso:   { icone: '!', titulo: 'Atenção' },
+  reforma: { icone: '🚧', titulo: 'UPA em reforma' }
 };
 
 function avisar(texto, tipo = 'aviso') {
@@ -369,6 +392,10 @@ function avisar(texto, tipo = 'aviso') {
     modal.classList.add('open');
     ok.focus();
   });
+}
+
+function avisarReforma(upa) {
+  return avisar(`A UPA ${upa.nome} está em reforma e não está registrando atendimentos no momento. Escolha outra unidade.`, 'reforma');
 }
 
 function confirmarDialog(texto) {
@@ -566,9 +593,9 @@ async function carregarUpas() {
       : null;
     return {
       ...u,
-      tempoMedio,
-      confiabilidade,
-      origemEstimativa,
+      tempoMedio: u.em_reforma ? null : tempoMedio,
+      confiabilidade: u.em_reforma ? 'sem_dados' : confiabilidade,
+      origemEstimativa: u.em_reforma ? 'heuristica' : origemEstimativa,
       modeloR2: modelo ? modelo.r2 : null,
       distanciaKm
     };
@@ -580,6 +607,7 @@ async function carregarUpas() {
 
 function renderizarLista(upas) {
   const ordenadas = [...upas].sort((a, b) => {
+    if (!!a.em_reforma !== !!b.em_reforma) return a.em_reforma ? 1 : -1; // reforma vai pro fim
     if (state.ordenarPor === 'distancia') {
       if (a.distanciaKm === null) return 1;
       if (b.distanciaKm === null) return -1;
@@ -599,9 +627,11 @@ function renderizarLista(upas) {
   }
 
   ordenadas.forEach(u => {
-    const corClasse = corPelaEspera(u.tempoMedio);
+    const corClasse = u.em_reforma ? 'em-reforma' : corPelaEspera(u.tempoMedio);
     let avisoConfianca = '';
-    if (u.origemEstimativa === 'regressao') {
+    if (u.em_reforma) {
+      avisoConfianca = '<div class="upa-confidence">unidade em reforma — sem registro de atendimentos</div>';
+    } else if (u.origemEstimativa === 'regressao') {
       avisoConfianca = '<div class="upa-confidence">estimativa por padrão histórico do horário</div>';
     } else if (u.confiabilidade === 'media' || u.confiabilidade === 'baixa') {
       avisoConfianca = '<div class="upa-confidence">baseado em poucos dados</div>';
@@ -614,7 +644,9 @@ function renderizarLista(upas) {
         <div class="upa-distance">${u.distanciaKm !== null ? u.distanciaKm.toFixed(1).replace('.', ',') + ' km' : 'distância indisponível'}</div>
         ${avisoConfianca}
       </div>
-      <div class="upa-wait ${corClasse}">${formatarDuracao(u.tempoMedio)}</div>
+      ${u.em_reforma
+        ? '<div class="upa-reforma">🚧 Em reforma</div>'
+        : `<div class="upa-wait ${corClasse}">${formatarDuracao(u.tempoMedio)}</div>`}
     `;
     card.addEventListener('click', () => iniciarCheckin(u));
     lista.appendChild(card);
@@ -624,7 +656,7 @@ function renderizarLista(upas) {
 function preencherSelectsDeUpas() {
   const opts = [...state.upasCache]
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
-    .map(u => `<option value="${u.id}">${u.nome}</option>`)
+    .map(u => `<option value="${u.id}">${u.nome}${u.em_reforma ? ' — 🚧 em reforma' : ''}</option>`)
     .join('');
   ['checkin-upa-select', 'retro-upa-select'].forEach(id => {
     const sel = document.getElementById(id);
@@ -650,6 +682,7 @@ document.querySelectorAll('.pill-toggle').forEach(btn => {
 let respostaSelecionada = null;
 
 function iniciarCheckin(upa) {
+  if (upa && upa.em_reforma) { avisarReforma(upa); return; }
   respostaSelecionada = upa ? 'sim' : null;
   state.upaSelecionada = upa || null;
 
@@ -673,6 +706,14 @@ function iniciarCheckin(upa) {
 document.getElementById('checkin-upa-select').addEventListener('change', (e) => {
   const upa = state.upasCache.find(u => u.id === e.target.value);
   if (!upa) return;
+  if (upa.em_reforma) {
+    avisarReforma(upa);
+    e.target.value = '';
+    state.upaSelecionada = null;
+    respostaSelecionada = null;
+    document.querySelectorAll('#screen-checkin [data-response]').forEach(b => b.classList.remove('selected'));
+    return;
+  }
   state.upaSelecionada = upa;
   respostaSelecionada = 'sim';
   document.querySelectorAll('#screen-checkin [data-response]').forEach(b => b.classList.remove('selected'));
@@ -709,6 +750,10 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
   }
   if (!state.upaSelecionada) {
     avisar('Selecione a UPA no menu acima.');
+    return;
+  }
+  if (state.upaSelecionada.em_reforma) {
+    avisarReforma(state.upaSelecionada);
     return;
   }
   if (!sb) {
@@ -803,10 +848,20 @@ function atualizarPermanenciaRetro() {
   campo.addEventListener('blur', atualizarPermanenciaRetro);
 });
 
+document.getElementById('retro-upa-select').addEventListener('change', e => {
+  const upa = state.upasCache.find(u => u.id === e.target.value);
+  if (upa && upa.em_reforma) { avisarReforma(upa); e.target.value = ''; }
+});
+
 document.getElementById('btn-retro-confirmar').addEventListener('click', async () => {
   const upaId = document.getElementById('retro-upa-select').value;
   if (!upaId) {
     avisar('Selecione a unidade onde você foi atendido.');
+    return;
+  }
+  const upaRetro = state.upasCache.find(u => u.id === upaId);
+  if (upaRetro && upaRetro.em_reforma) {
+    avisarReforma(upaRetro);
     return;
   }
   if (!sb) {
@@ -911,7 +966,7 @@ document.querySelectorAll('.proto-nav [data-goto]').forEach(btn => {
   btn.addEventListener('click', () => {
     const alvo = btn.dataset.goto;
     if (alvo === 'screen-checkin') {
-      const upa = state.upaSelecionada || state.upasCache[0];
+      const upa = state.upaSelecionada || state.upasCache.find(u => !u.em_reforma);
       if (upa) iniciarCheckin(upa);
       else avisar('Nenhuma UPA carregada ainda. Verifique o Supabase.');
       return;
@@ -941,7 +996,7 @@ function sugerirUpaMaisProxima() {
   if (!telaCheckin.classList.contains('active')) return;
   if (!state.posicaoUsuario) return;
 
-  const comDistancia = state.upasCache.filter(u => u.distanciaKm !== null);
+  const comDistancia = state.upasCache.filter(u => u.distanciaKm !== null && !u.em_reforma);
   if (comDistancia.length === 0) return;
 
   const maisProxima = comDistancia.reduce((a, b) => (a.distanciaKm < b.distanciaKm ? a : b));
