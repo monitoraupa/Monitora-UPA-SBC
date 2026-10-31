@@ -833,7 +833,7 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
     return;
   }
   if (respostaSelecionada === 'funcionario') {
-    avisar('Obrigado! Check-ins de funcionários não entram no tempo médio.', 'sucesso');
+    avisar('Obrigado! Atendimentos de funcionários não entram no tempo médio.', 'sucesso');
     mostrarTela('screen-home');
     return;
   }
@@ -871,7 +871,7 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
     horarioChegada: horario.toISOString()
   }));
 
-  avisar('Chegada registrada! Toque em "Check-out" quando for embora.', 'sucesso');
+  avisar('Chegada registrada! Toque em "Finalizar atendimento" quando for embora.', 'sucesso');
   mostrarTela('screen-home');
 });
 
