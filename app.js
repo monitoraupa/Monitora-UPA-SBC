@@ -26,7 +26,10 @@ const DEVICE_ID = getOrCreateDeviceId();
 const CHAVE_ATIVO = 'monitora_upa_atendimento_ativo';
 const MIN_BLOQUEIO_MIN = 3;      // abaixo disso: bloqueia o registro
 const MIN_CONFIRMAR_MIN = 20;    // abaixo disso: pede confirmação
-const MAX_ATENDIMENTO_MIN = 360; // 6h: depois disso o atendimento é encerrado
+const MAX_ATENDIMENTO_MIN = 360;       // 6h: acima disso o atendimento ao vivo sai da média do painel
+const LIMITE_ESQUECIMENTO_MIN = 720;   // 12h: sem finalizar, o sistema encerra (status "finalizado_sistema")
+const JANELA_RETRO_MIN = 480;          // 8h: registro de atendimento já finalizado pode ir até 8h atrás
+const MIN_CONFIRMAR_LONGO_MIN = 360;   // acima disso pede confirmação ("tem certeza que demorou X?")
 
 let sb = null;
 try {
@@ -129,9 +132,11 @@ function calcularTempoMedioUpa(finalizadosDaUpa, emAndamentoDaUpa, agora) {
     if (resultadoLongo) { resultado = resultadoLongo; janela = '6h'; }
   }
 
-  const esperasAoVivo = emAndamentoDaUpa.map(a =>
-    (agora.getTime() - new Date(a.horario_chegada).getTime()) / 60000
-  );
+  // Quem está há mais de 6h "em andamento" provavelmente esqueceu de finalizar:
+  // não entra no sinal ao vivo (e, se não finalizar, vira "finalizado_sistema").
+  const esperasAoVivo = emAndamentoDaUpa
+    .map(a => (agora.getTime() - new Date(a.horario_chegada).getTime()) / 60000)
+    .filter(min => min <= MAX_ATENDIMENTO_MIN);
   const mediaAoVivo = esperasAoVivo.length
     ? esperasAoVivo.reduce((a, b) => a + b, 0) / esperasAoVivo.length
     : null;
@@ -179,7 +184,8 @@ function calcularTempoMedioUpa(finalizadosDaUpa, emAndamentoDaUpa, agora) {
       em média?"
 
    - Usa a hora de CHEGADA (é o horário em que a pessoa entra na fila).
-   - Só atendimentos finalizados, com duração entre 3 min e 6h.
+   - Só atendimentos com status 'finalizado' (voluntários), duração mínima de 3 min.
+     Os encerrados pelo sistema ('finalizado_sistema') nunca entram.
    - Precisa de pelo menos 3 registros na faixa; senão, "sem dados".
    ============================================================ */
 const DIAS_HISTORICO = 30;
@@ -197,7 +203,6 @@ function mediaHistoricaPorHorario(finalizados, horaAtualNum) {
     a.horario_chegada &&
     a.tempo_permanencia_minutos !== null &&
     a.tempo_permanencia_minutos >= MIN_BLOQUEIO_MIN &&
-    a.tempo_permanencia_minutos <= MAX_ATENDIMENTO_MIN &&
     distanciaEntreHoras(new Date(a.horario_chegada).getHours(), horaAtualNum) <= MARGEM_HORAS
   );
   if (validos.length < MIN_AMOSTRAS_HORARIO) return null;
@@ -247,13 +252,13 @@ function atualizarBannerAtivo(agora = new Date()) {
 
   const ativo = JSON.parse(ativoStr);
   const minutos = Math.max(0, Math.round((agora - new Date(ativo.horarioChegada)) / 60000));
-  if (minutos >= MAX_ATENDIMENTO_MIN) { banner.style.display = 'none'; return; }
+  if (minutos >= LIMITE_ESQUECIMENTO_MIN) { banner.style.display = 'none'; return; }
   const cor = corPelaEspera(minutos);
 
   banner.className = `active-banner ${cor === 'wait-gray' ? 'wait-green' : cor}`;
   banner.style.display = 'flex';
   document.getElementById('active-banner-text').textContent =
-    `Atendimento em andamento: ${minutos} min`;
+    `Atendimento em andamento: ${minutos >= 60 ? formatarDuracao(minutos) : minutos + ' min'}`;
 }
 
 document.getElementById('active-banner').addEventListener('click', () => {
@@ -296,9 +301,10 @@ const MENSAGENS_ERRO = {
   TEMPO_MUITO_CURTO: 'Esse tempo é muito curto para um atendimento. [[Corrija o horário]].',
   TEMPO_MAXIMO_EXCEDIDO: 'Esse tempo parece longo demais. [[Corrija o horário]].',
   HORARIO_FUTURO: 'O horário não pode estar no futuro.',
-  HORARIO_MUITO_ANTIGO: 'Não foi possível registrar este horário.',
+  HORARIO_MUITO_ANTIGO: 'Só é possível registrar atendimentos das últimas 8 horas.',
   SAIDA_ANTES_DA_CHEGADA: 'A saída precisa ser depois da chegada.',
   chk_saida_depois_chegada: 'A saída precisa ser depois da chegada. Se você acabou de chegar, espere um minutinho ou [[corrija o horário]].',
+  ATENDIMENTO_SOBREPOSTO: 'Você já tem um atendimento registrado nesse período. [[Corrija o horário]].',
   ATENDIMENTO_NAO_ENCONTRADO: 'Atendimento não encontrado ou já encerrado.',
   UPA_EM_REFORMA: 'Esta UPA está em reforma e não está registrando atendimentos no momento.',
   DISPOSITIVO_INVALIDO: 'Não foi possível identificar este aparelho. Recarregue a página e tente de novo.',
@@ -424,9 +430,9 @@ async function validarDuracaoFinalizado(minutos, aoCorrigir) {
     avisar('Esse tempo é muito curto para um atendimento. [[Corrija o horário]].', 'aviso', { aoCorrigir });
     return false;
   }
-  if (minutos > MAX_ATENDIMENTO_MIN) {
-    avisar('Esse tempo parece longo demais. [[Corrija o horário]].', 'aviso', { aoCorrigir });
-    return false;
+  if (minutos > MIN_CONFIRMAR_LONGO_MIN) {
+    // Finalização voluntária após 6h: conta, mas pede confirmação.
+    return confirmarDialog(`Você tem certeza que o seu atendimento demorou ${formatarDuracao(minutos)}?`);
   }
   if (minutos < MIN_CONFIRMAR_MIN) {
     return confirmarDialog(`Você tem certeza que o seu atendimento demorou ${minutos} ${minutos === 1 ? 'minuto' : 'minutos'}?`);
@@ -434,12 +440,14 @@ async function validarDuracaoFinalizado(minutos, aoCorrigir) {
   return true;
 }
 
-// Encerra no aparelho um atendimento que passou de 6h. Retorna true se encerrou.
+// Encerra no aparelho um atendimento esquecido (passou de 12h sem finalizar).
+// Entre 6h e 12h a pessoa ainda pode finalizar voluntariamente e o tempo conta.
+// No banco, encerrar_expirados() marca o atendimento como "finalizado_sistema".
 function verificarExpiracao() {
   const s = localStorage.getItem(CHAVE_ATIVO);
   if (!s) return false;
   const ativo = JSON.parse(s);
-  if (Date.now() - new Date(ativo.horarioChegada).getTime() < MAX_ATENDIMENTO_MIN * 60000) return false;
+  if (Date.now() - new Date(ativo.horarioChegada).getTime() < LIMITE_ESQUECIMENTO_MIN * 60000) return false;
 
   localStorage.removeItem(CHAVE_ATIVO);
   atualizarBannerAtivo();
@@ -753,8 +761,103 @@ function preencherSelectsDeUpas() {
     const valorAtual = sel.value;
     sel.innerHTML = '<option value="" selected disabled>selecione</option>' + opts;
     if (valorAtual) sel.value = valorAtual;
+    if (sel._csRebuild) sel._csRebuild();
   });
 }
+
+/* ============================================================
+   DROPDOWN PERSONALIZADO (substitui a lista nativa do <select>)
+   ------------------------------------------------------------
+   O <select> original continua no HTML (escondido) guardando o
+   valor, então o resto do código não muda: ele ainda lê .value
+   e escuta o evento "change".
+   ============================================================ */
+function criarDropdownUpa(sel) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cs';
+  sel.parentNode.insertBefore(wrap, sel);
+  wrap.appendChild(sel);
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'cs-trigger placeholder';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.innerHTML = '<span class="cs-label">selecione</span>' +
+    '<svg class="cs-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  const label = trigger.querySelector('.cs-label');
+
+  const panel = document.createElement('div');
+  panel.className = 'cs-panel';
+  panel.setAttribute('role', 'listbox');
+
+  wrap.appendChild(trigger);
+  wrap.appendChild(panel);
+
+  const opcoes = () => [...panel.querySelectorAll('.cs-option')];
+
+  function renderValor() {
+    const opt = sel.options[sel.selectedIndex];
+    const temValor = !!sel.value && opt;
+    label.textContent = temValor ? opt.textContent : 'selecione';
+    trigger.classList.toggle('placeholder', !temValor);
+    opcoes().forEach(b => b.classList.toggle('selected', b.dataset.value === sel.value));
+  }
+
+  function reconstruir() {
+    panel.innerHTML = '';
+    [...sel.options].filter(o => o.value).forEach(o => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cs-option' + (o.textContent.includes('em reforma') ? ' em-reforma' : '');
+      b.dataset.value = o.value;
+      b.setAttribute('role', 'option');
+      b.innerHTML = '<span class="cs-opt-text"></span><span class="cs-check" aria-hidden="true">✓</span>';
+      b.querySelector('.cs-opt-text').textContent = o.textContent;
+      b.addEventListener('click', () => {
+        sel.value = o.value;
+        fechar();
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      panel.appendChild(b);
+    });
+    renderValor();
+  }
+
+  function abrir() {
+    document.querySelectorAll('.cs.open').forEach(c => { if (c !== wrap) c.classList.remove('open'); });
+    wrap.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    const atual = panel.querySelector('.cs-option.selected');
+    if (atual) atual.scrollIntoView({ block: 'nearest' });
+  }
+  function fechar() {
+    wrap.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  trigger.addEventListener('click', () => (wrap.classList.contains('open') ? fechar() : abrir()));
+  trigger.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' && !wrap.classList.contains('open')) { e.preventDefault(); abrir(); }
+  });
+  document.addEventListener('click', e => { if (!wrap.contains(e.target)) fechar(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fechar(); });
+
+  // Quando o código muda sel.value (ex.: iniciarCheckin), o visual acompanha.
+  const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(sel, 'value', {
+    configurable: true,
+    get() { return desc.get.call(this); },
+    set(v) { desc.set.call(this, v); renderValor(); }
+  });
+
+  sel._csRebuild = reconstruir;
+  reconstruir();
+}
+['checkin-upa-select', 'retro-upa-select'].forEach(id => {
+  const sel = document.getElementById(id);
+  if (sel) criarDropdownUpa(sel);
+});
 
 document.querySelectorAll('.pill-toggle').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -913,7 +1016,7 @@ function carregarCheckout() {
 
 /* ------------------------------------------------------------
    Variante retroativa — pessoa não fez check-in neste aparelho,
-   mas quer registrar um atendimento das últimas 2 horas.
+   mas quer registrar um atendimento das últimas 8 horas.
    ------------------------------------------------------------ */
 function prepararCheckoutRetroativo() {
   const agora = new Date();
@@ -926,8 +1029,8 @@ function prepararCheckoutRetroativo() {
 }
 
 function atualizarPermanenciaRetro() {
-  const chegada = parseHoraParaData(document.getElementById('retro-chegada-time').textContent);
-  const saida = parseHoraParaData(document.getElementById('retro-saida-time').textContent);
+  const saida = parseHoraPassada(document.getElementById('retro-saida-time').textContent);
+  const chegada = parseHoraPassada(document.getElementById('retro-chegada-time').textContent, saida);
   let minutos = Math.round((saida - chegada) / 60000);
   if (isNaN(minutos) || minutos < 0) minutos = null;
   document.getElementById('retro-permanencia-valor').textContent =
@@ -961,9 +1064,17 @@ document.getElementById('btn-retro-confirmar').addEventListener('click', async (
     return;
   }
 
-  const saida = parseHoraParaData(document.getElementById('retro-saida-time').textContent);
+  const agoraRetro = new Date();
+  const saida = parseHoraPassada(document.getElementById('retro-saida-time').textContent, agoraRetro);
   const chegada = parseHoraPassada(document.getElementById('retro-chegada-time').textContent, saida);
   const minutos = Math.round((saida - chegada) / 60000);
+
+  // Janela de 8h: o atendimento inteiro precisa ter ocorrido nas últimas 8 horas.
+  if (chegada.getTime() < agoraRetro.getTime() - JANELA_RETRO_MIN * 60000) {
+    avisar('Só é possível registrar atendimentos das últimas 8 horas. [[Corrija o horário]].', 'aviso',
+      { aoCorrigir: () => corrigirHorario('retro-chegada-time') });
+    return;
+  }
 
   if (!(await validarDuracaoFinalizado(minutos, () => corrigirHorario('retro-chegada-time')))) return;
 
