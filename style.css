@@ -231,6 +231,13 @@ body{
 .upa-wait.wait-yellow{ font-weight:700; font-size:1rem; color:var(--yellow); white-space:nowrap; }
 .upa-wait.wait-red{ font-weight:700; font-size:1rem; color:var(--red); white-space:nowrap; }
 
+/* ===================== UPA EM REFORMA ===================== */
+.upa-card.em-reforma{ border-color:var(--yellow); background:#fffaf0; }
+.upa-reforma{
+  font-weight:700; font-size:0.85rem; color:#b45309;
+  white-space:nowrap; display:flex; align-items:center; gap:6px;
+}
+
 /* ===================== BARRA DE PROTÓTIPO ===================== */
 .proto-nav{
   position:fixed; bottom:0; left:0; right:0;
@@ -283,6 +290,7 @@ body{
 .aviso-icone--sucesso{ background:var(--green); }
 .aviso-icone--erro{ background:var(--red); }
 .aviso-icone--aviso{ background:var(--yellow); }
+.aviso-icone--reforma{ background:var(--yellow); font-size:1.7rem; }
 
 .aviso-titulo{ font-weight:700; font-size:1.15rem; color:#111; margin-bottom:6px; }
 .aviso-texto{ color:#4b5563; font-size:0.95rem; line-height:1.4; margin-bottom:18px; }
