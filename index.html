@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=22" />
+<link rel="stylesheet" href="style.css?v=23" />
 <style>
 /* Pop-up de desistência e link "Corrija o horário" (ficam aqui para carregar junto com a página) */
-#desistencia-comentario{
+#desistencia-comentario, #funcionario-comentario{
   width:100%; min-height:80px; resize:vertical; border:none; border-radius:12px;
   background:#e2e5ea; padding:12px 14px; font-family:inherit; font-size:0.9rem;
   color:#222; margin-bottom:16px;
@@ -55,9 +55,9 @@
       <p class="notif-subtext">Nos ajude a melhorar o atendimento respondendo abaixo.</p>
 
       <div class="response-row">
-        <button class="btn btn--outline btn--green" data-response="sim">Sim</button>
-        <button class="btn btn--outline btn--red" data-response="nao">Não</button>
         <button class="btn btn--outline btn--blue" data-response="funcionario">Sou funcionário</button>
+        <button class="btn btn--outline btn--red" data-response="nao">Não</button>
+        <button class="btn btn--outline btn--green" data-response="sim">Sim</button>
       </div>
 
       <div class="time-field">
@@ -66,7 +66,7 @@
       </div>
 
       <div class="action-row">
-        <button class="btn btn--pill btn--solid-gray" id="btn-corrigir-chegada">Corrigir o horário</button>
+        <button class="btn btn--pill btn--soft-blue" id="btn-corrigir-chegada">Corrigir o horário</button>
         <button class="btn btn--pill btn--solid-green" id="btn-confirmar-chegada">Confirmar horário</button>
       </div>
     </div>
@@ -107,8 +107,8 @@
       </div>
 
       <div class="action-row action-row--three">
+        <button class="btn btn--pill btn--soft-blue" id="btn-corrigir-saida">Corrigir o horário</button>
         <button class="btn btn--pill btn--solid-green" id="btn-finalizar">Sim, finalizado</button>
-        <button class="btn btn--pill btn--solid-gray" id="btn-corrigir-saida">Corrigir o horário</button>
         <button class="btn btn--pill btn--solid-red" id="btn-desisti">Não, desisti</button>
       </div>
     </div>
@@ -242,6 +242,35 @@
   </div>
 
   <!-- ======================================================= -->
+  <!-- MODAL DO FUNCIONÁRIO (agradecimento + nota do app + sugestões) -->
+  <!-- ======================================================= -->
+  <div class="modal" id="modal-funcionario">
+    <div class="modal-box">
+      <p class="fb-title"><span class="fb-icon">💙</span> Obrigado por fazer parte do Monitora UPA!</p>
+      <p class="notif-subtext fb-sub">Como funcionário, sua visão é muito valiosa pra gente.</p>
+
+      <div class="fb-question">
+        <p class="fb-title"><span class="fb-icon">📱</span> O que você achou do aplicativo?</p>
+        <div class="stars" id="stars-func" role="radiogroup" aria-label="Nota do aplicativo de 1 a 5">
+          <button type="button" data-star="1" aria-label="1 estrela">★</button>
+          <button type="button" data-star="2" aria-label="2 estrelas">★</button>
+          <button type="button" data-star="3" aria-label="3 estrelas">★</button>
+          <button type="button" data-star="4" aria-label="4 estrelas">★</button>
+          <button type="button" data-star="5" aria-label="5 estrelas">★</button>
+        </div>
+      </div>
+
+      <p class="notif-subtext fb-sub">Tem alguma sugestão pra melhorar? Conta pra gente!</p>
+      <textarea id="funcionario-comentario" maxlength="500"
+        placeholder="Escreva aqui suas sugestões (opcional)"></textarea>
+      <div class="action-row">
+        <button class="btn btn--pill btn--solid-gray" id="btn-pular-funcionario">Agora não</button>
+        <button class="btn btn--pill btn--solid-green" id="btn-enviar-funcionario">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
   <!-- MODAL DE DESISTÊNCIA (motivo + comentário opcional)      -->
   <!-- ======================================================= -->
   <div class="modal" id="modal-desistencia">
@@ -309,6 +338,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>
