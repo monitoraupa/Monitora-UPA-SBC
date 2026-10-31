@@ -464,7 +464,7 @@ setInterval(verificarExpiracao, 30000);
    enviar_feedback no banco busca o tempo do atendimento e grava
    junto do feedback (ver migracao_feedback.sql). */
 let feedbackAtendimentoId = null;
-const feedbackNotas = { atendimento: 0, app: 0 };
+const feedbackNotas = { atendimento: 0, app: 0, func: 0 };
 
 function pintarEstrelas(grupo, n) {
   document.querySelectorAll(`#stars-${grupo} button`).forEach(b =>
@@ -484,7 +484,7 @@ function fecharFeedback() {
   document.getElementById('modal-feedback').classList.remove('open');
 }
 
-['atendimento', 'app'].forEach(grupo => {
+['atendimento', 'app', 'func'].forEach(grupo => {
   document.querySelectorAll(`#stars-${grupo} button`).forEach(b =>
     b.addEventListener('click', () => {
       feedbackNotas[grupo] = Number(b.dataset.star);
@@ -527,6 +527,36 @@ document.getElementById('btn-enviar-feedback').addEventListener('click', async (
   });
   if (error) { avisar(erroAmigavel(error), 'erro'); console.error(error); return; }
   fecharFeedback();
+  avisar('Obrigado pelo feedback! 💙', 'sucesso');
+});
+
+/* ---------- Feedback do funcionário (agradecimento + nota do app + sugestões) ----------
+   Fica marcado como "funcionário" no banco (RPC enviar_feedback_funcionario,
+   ver migracao_feedback_funcionario.sql). Não entra no tempo médio das UPAs. */
+function abrirFeedbackFuncionario() {
+  feedbackNotas.func = 0;
+  pintarEstrelas('func', 0);
+  document.getElementById('funcionario-comentario').value = '';
+  document.getElementById('modal-funcionario').classList.add('open');
+}
+function fecharFeedbackFuncionario() {
+  document.getElementById('modal-funcionario').classList.remove('open');
+}
+document.getElementById('btn-pular-funcionario').addEventListener('click', fecharFeedbackFuncionario);
+document.getElementById('btn-enviar-funcionario').addEventListener('click', async () => {
+  if (!feedbackNotas.func) {
+    avisar('Escolha de 1 a 5 estrelas para o aplicativo.');
+    return;
+  }
+  if (!sb) { avisar(MSG_PROBLEMA_APP, 'erro'); return; }
+  const { error } = await sb.rpc('enviar_feedback_funcionario', {
+    p_dispositivo_id: state.deviceId,
+    p_upa_id: state.upaSelecionada ? state.upaSelecionada.id : null,
+    p_estrelas_app: feedbackNotas.func,
+    p_comentario: document.getElementById('funcionario-comentario').value
+  });
+  if (error) { avisar(erroAmigavel(error), 'erro'); console.error(error); return; }
+  fecharFeedbackFuncionario();
   avisar('Obrigado pelo feedback! 💙', 'sucesso');
 });
 
@@ -937,8 +967,8 @@ document.getElementById('btn-confirmar-chegada').addEventListener('click', async
     return;
   }
   if (respostaSelecionada === 'funcionario') {
-    avisar('Obrigado! Atendimentos de funcionários não entram no tempo médio.', 'sucesso');
     mostrarTela('screen-home');
+    abrirFeedbackFuncionario();
     return;
   }
   if (!state.upaSelecionada) {
