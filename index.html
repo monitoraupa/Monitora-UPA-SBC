@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=11" />
+<link rel="stylesheet" href="style.css?v=12" />
 </head>
 <body>
 
@@ -142,13 +142,9 @@
   <section id="screen-home" class="screen screen--light active">
     <header class="home-header">
       <div class="home-header-top">
-        <button type="button" class="icon-btn home-info-btn" id="home-info-btn" aria-label="Sobre as informações do painel" aria-expanded="false" aria-controls="home-info-balloon">i</button>
+        <button type="button" class="icon-btn home-info-btn" id="home-info-btn" aria-label="Sobre as informações do painel" aria-haspopup="dialog">i</button>
       </div>
-      <div class="home-info-balloon" id="home-info-balloon" role="note" hidden>
-        Os dados mostrados aqui vêm da experiência de outros pacientes e indicam quanto tempo, em média, cada unidade leva para concluir o atendimento. Ao chegar na UPA, registre o seu horário e deixe seu feedback: você ajuda quem está decidindo para onde ir. Sua participação é anônima e voluntária.
-      </div>
-
-      <div class="active-banner" id="active-banner">
+<div class="active-banner" id="active-banner">
         <span id="active-banner-text">Atendimento em andamento: -- min</span>
         <span class="active-banner-cta">Finalizar?</span>
       </div>
@@ -225,6 +221,26 @@
   </div>
 
   <!-- ======================================================= -->
+  <!-- MODAL DE INFORMAÇÃO (ícone "i" do painel)                -->
+  <!-- ======================================================= -->
+  <div class="modal" id="modal-info" role="dialog" aria-modal="true" aria-labelledby="modal-info-titulo">
+    <div class="modal-box">
+      <div class="notif-header">
+        <div class="notif-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M11 2h2v9h9v2h-9v9h-2v-9H2v-2h9V2z" fill="#1fa34d"/>
+          </svg>
+        </div>
+        <div class="notif-title" id="modal-info-titulo">Monitora UPA</div>
+      </div>
+      <p class="modal-info-texto">
+        Os dados mostrados aqui vêm da experiência de outros pacientes e indicam quanto tempo, em média, cada unidade leva para concluir o atendimento. Ao chegar na UPA, registre o seu horário e deixe seu feedback: você ajuda quem está decidindo para onde ir. Sua participação é anônima e voluntária.
+      </p>
+      <button class="btn btn--pill btn--solid-green aviso-ok" id="modal-info-ok">Entendi</button>
+    </div>
+  </div>
+
+  <!-- ======================================================= -->
   <!-- MODAL DE AVISO (substitui o alert do navegador)          -->
   <!-- ======================================================= -->
   <div class="modal modal--aviso" id="modal-aviso">
@@ -254,6 +270,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>
