@@ -304,7 +304,8 @@ body{
 .stars button.on{ color:var(--yellow); }
 .stars button:active{ transform:scale(1.15); }
 
-#feedback-comentario{
+#feedback-comentario,
+#desistencia-comentario{
   width:100%; min-height:80px; resize:vertical; border:none; border-radius:12px;
   background:#e2e5ea; padding:12px 14px; font-family:inherit; font-size:0.9rem;
   color:#222; margin-bottom:16px;
@@ -359,3 +360,20 @@ body{
   margin-top:4px; max-width:210px;
 }
 .upa-endereco.open{ display:block; }
+
+/* ===================== MODAL DE DESISTÊNCIA ===================== */
+.motivo-lista{ display:flex; flex-direction:column; gap:8px; margin:12px 0 6px; }
+.motivo-opcao{
+  display:flex; align-items:center; gap:10px;
+  background:#e2e5ea; border:2px solid transparent; border-radius:12px;
+  padding:12px 14px; font-size:0.9rem; font-weight:600; color:#222; cursor:pointer;
+}
+.motivo-opcao input{ width:18px; height:18px; accent-color:var(--blue-accent); flex-shrink:0; }
+.motivo-opcao.selected{ background:#dbe3ee; border-color:var(--blue-accent); }
+
+/* Link "corrija o horário" dentro do aviso */
+.aviso-link{
+  background:none; border:none; padding:0; margin:0;
+  font:inherit; font-weight:700; color:var(--blue-accent);
+  text-decoration:underline; cursor:pointer;
+}
