@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=13" />
+<link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body>
 
@@ -130,6 +130,13 @@
   <section id="screen-home" class="screen screen--light active">
     <header class="home-header">
       <div class="home-header-top">
+        <div class="loc-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/>
+            <circle cx="12" cy="9.5" r="2.5"/>
+          </svg>
+          <span>Apenas unidades de São Bernardo do Campo</span>
+        </div>
         <button type="button" class="icon-btn home-info-btn" id="home-info-btn" aria-label="Sobre as informações do painel" aria-haspopup="dialog">i</button>
       </div>
 <div class="active-banner" id="active-banner">
@@ -250,6 +257,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
