@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=4" />
+<link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
 
@@ -185,17 +185,31 @@
   <!-- ======================================================= -->
   <div class="modal" id="modal-feedback">
     <div class="modal-box">
-      <p class="modal-title">Como foi sua experiência no aplicativo?</p>
-      <p class="notif-subtext">Sua opinião ajuda a melhorar o Monitora UPA.</p>
-      <div class="stars" id="stars" role="radiogroup" aria-label="Nota de 1 a 5">
-        <button type="button" data-star="1" aria-label="1 estrela">★</button>
-        <button type="button" data-star="2" aria-label="2 estrelas">★</button>
-        <button type="button" data-star="3" aria-label="3 estrelas">★</button>
-        <button type="button" data-star="4" aria-label="4 estrelas">★</button>
-        <button type="button" data-star="5" aria-label="5 estrelas">★</button>
+      <div class="fb-question">
+        <p class="fb-title"><span class="fb-icon">🩺</span> Como foi o seu atendimento?</p>
+        <div class="stars" id="stars-atendimento" role="radiogroup" aria-label="Nota do atendimento de 1 a 5">
+          <button type="button" data-star="1" aria-label="1 estrela">★</button>
+          <button type="button" data-star="2" aria-label="2 estrelas">★</button>
+          <button type="button" data-star="3" aria-label="3 estrelas">★</button>
+          <button type="button" data-star="4" aria-label="4 estrelas">★</button>
+          <button type="button" data-star="5" aria-label="5 estrelas">★</button>
+        </div>
       </div>
+
+      <div class="fb-question">
+        <p class="fb-title"><span class="fb-icon">📱</span> Como foi sua experiência com o aplicativo?</p>
+        <div class="stars" id="stars-app" role="radiogroup" aria-label="Nota do aplicativo de 1 a 5">
+          <button type="button" data-star="1" aria-label="1 estrela">★</button>
+          <button type="button" data-star="2" aria-label="2 estrelas">★</button>
+          <button type="button" data-star="3" aria-label="3 estrelas">★</button>
+          <button type="button" data-star="4" aria-label="4 estrelas">★</button>
+          <button type="button" data-star="5" aria-label="5 estrelas">★</button>
+        </div>
+      </div>
+
+      <p class="notif-subtext fb-sub">Sua opinião ajuda outras pessoas e melhora o serviço.</p>
       <textarea id="feedback-comentario" maxlength="500"
-        placeholder="Tem alguma sugestão ou problema? Escreva aqui (opcional)"></textarea>
+        placeholder="Quer deixar um comentário? Escreva aqui (opcional)"></textarea>
       <div class="action-row">
         <button class="btn btn--pill btn--solid-green" id="btn-enviar-feedback">Enviar</button>
         <button class="btn btn--pill btn--solid-gray" id="btn-pular-feedback">Agora não</button>
@@ -234,6 +248,6 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
