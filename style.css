@@ -7,6 +7,7 @@
   --cinza-claro: #D3D3D3;
   --blue-accent:#2f6fd1;
   --yellow:#e0a316;
+  --purple:#7c3aed;
   --gray-bg:#eef0f3;
   --gray-text:#6b7280;
   --card-radius:20px;
@@ -232,9 +233,9 @@ body{
 .upa-wait.wait-red{ font-weight:700; font-size:1rem; color:var(--red); white-space:nowrap; }
 
 /* ===================== UPA EM REFORMA ===================== */
-.upa-card.em-reforma{ border-color:var(--yellow); background:#fffaf0; }
+.upa-card.em-reforma{ border-color:var(--purple); background:#f5f0ff; }
 .upa-reforma{
-  font-weight:700; font-size:0.85rem; color:#b45309;
+  font-weight:700; font-size:0.85rem; color:#6d28d9;
   white-space:nowrap; display:flex; align-items:center; gap:6px;
 }
 
@@ -290,7 +291,7 @@ body{
 .aviso-icone--sucesso{ background:var(--green); }
 .aviso-icone--erro{ background:var(--red); }
 .aviso-icone--aviso{ background:var(--yellow); }
-.aviso-icone--reforma{ background:var(--yellow); font-size:1.7rem; }
+.aviso-icone--reforma{ background:var(--purple); font-size:1.7rem; }
 
 .aviso-titulo{ font-weight:700; font-size:1.15rem; color:#111; margin-bottom:6px; }
 .aviso-texto{ color:#4b5563; font-size:0.95rem; line-height:1.4; margin-bottom:18px; }
