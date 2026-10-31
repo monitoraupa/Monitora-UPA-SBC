@@ -188,10 +188,14 @@ function calcularTempoMedioUpa(finalizadosDaUpa, emAndamentoDaUpa, agora) {
    por horário do dia para não cair em "sem dados".
    ============================================================ */
 const MIN_PONTOS_REGRESSAO = 5; // abaixo disso, o modelo não é confiável o suficiente pra usar
+const MIN_HORAS_DISTINTAS = 3;  // precisa de atendimentos em pelo menos 3 horas diferentes do dia
+const R2_MINIMO = 0.2;          // se o horário explica menos que isso, o modelo não é usado
+
 
 function regressaoLinearSimples(pontosXY) {
   const n = pontosXY.length;
   if (n < MIN_PONTOS_REGRESSAO) return null;
+  if (new Set(pontosXY.map(p => p[0])).size < MIN_HORAS_DISTINTAS) return null; // pouca variedade de horários
 
   let somaX = 0, somaY = 0, somaXY = 0, somaXX = 0;
   pontosXY.forEach(([x, y]) => {
@@ -215,6 +219,8 @@ function regressaoLinearSimples(pontosXY) {
   });
   const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
 
+  if (r2 < R2_MINIMO) return null; // o horário explica pouco: melhor não mostrar previsão
+
   return { a, b, n, r2 };
 }
 
@@ -230,7 +236,9 @@ function treinarModelosPorHorario(finalizadosPorUpa) {
     // "se eu chegar agora, quanto vou ficar?", então o dado precisa estar
     // organizado pela hora de chegada.
     const pontos = finalizadosPorUpa[upaId]
-      .filter(a => a.tempo_permanencia_minutos !== null && a.horario_chegada)
+      .filter(a => a.tempo_permanencia_minutos !== null && a.horario_chegada &&
+                   a.tempo_permanencia_minutos >= MIN_BLOQUEIO_MIN &&
+                   a.tempo_permanencia_minutos <= MAX_ATENDIMENTO_MIN)
       .map(a => [new Date(a.horario_chegada).getHours(), a.tempo_permanencia_minutos]);
     modelos[upaId] = regressaoLinearSimples(pontos);
   });
@@ -621,7 +629,9 @@ async function carregarUpas() {
     const modelo = modelosRegressao[u.id];
     if (modelo && (tempoMedio === null || confiabilidade === 'baixa' || confiabilidade === 'sem_dados')) {
       const previsao = preverPorRegressao(modelo, agora.getHours());
-      if (previsao !== null) {
+      // Previsão abaixo do mínimo aceito (3 min) não é um tempo real:
+      // ignora o modelo e deixa o card como "sem dados".
+      if (previsao !== null && previsao >= MIN_BLOQUEIO_MIN) {
         tempoMedio = tempoMedio === null ? previsao : (tempoMedio + previsao) / 2;
         confiabilidade = 'media';
         origemEstimativa = 'regressao';
