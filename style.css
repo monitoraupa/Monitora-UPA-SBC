@@ -91,7 +91,9 @@ body{
   width:32px; height:32px; border-radius:9px; background:#fff;
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 1px 3px rgba(0,0,0,.18); flex-shrink:0;
+  overflow:hidden; /* mantém as bordas arredondadas na imagem */
 }
+.notif-icon img{ width:100%; height:100%; display:block; object-fit:cover; }
 .notif-title{ font-weight:700; flex:1; font-size:0.98rem; }
 .notif-time{ color:#8b93a1; font-size:0.82rem; }
 
