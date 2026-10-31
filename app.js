@@ -174,7 +174,7 @@ function calcularTempoMedioUpa(finalizadosDaUpa, emAndamentoDaUpa, agora) {
    treinada a cada carregamento a partir do histórico real de
    atendimentos de cada UPA:
 
-     tempo_permanencia_min  ~  a + b * hora_do_dia
+     tempo_permanencia_min  ~  a + b * hora_de_chegada_do_dia
 
    Este é o modelo supervisionado descrito no trabalho científico
    (linha "IA & Tecnologia — Aprendizado de Máquina aplicado à
@@ -226,9 +226,12 @@ function regressaoLinearSimples(pontosXY) {
 function treinarModelosPorHorario(finalizadosPorUpa) {
   const modelos = {};
   Object.keys(finalizadosPorUpa).forEach(upaId => {
+    // X = hora em que a pessoa CHEGOU (não a de saída): o modelo responde
+    // "se eu chegar agora, quanto vou ficar?", então o dado precisa estar
+    // organizado pela hora de chegada.
     const pontos = finalizadosPorUpa[upaId]
-      .filter(a => a.tempo_permanencia_minutos !== null && a.horario_saida)
-      .map(a => [new Date(a.horario_saida).getHours(), a.tempo_permanencia_minutos]);
+      .filter(a => a.tempo_permanencia_minutos !== null && a.horario_chegada)
+      .map(a => [new Date(a.horario_chegada).getHours(), a.tempo_permanencia_minutos]);
     modelos[upaId] = regressaoLinearSimples(pontos);
   });
   return modelos;
@@ -484,12 +487,23 @@ function fecharFeedback() {
     }));
 });
 
-/* Ícone "i" do painel (tela inicial) */
-document.getElementById('home-info-btn').addEventListener('click', () => {
-  const btn = document.getElementById('home-info-btn');
-  const balao = document.getElementById('home-info-balloon');
-  balao.hidden = !balao.hidden;
-  btn.setAttribute('aria-expanded', String(!balao.hidden));
+/* Ícone "i" do painel: pop-up por cima da tela (não empurra o layout) */
+const modalInfo = document.getElementById('modal-info');
+const btnInfo = document.getElementById('home-info-btn');
+
+function abrirInfo() {
+  modalInfo.classList.add('open');
+  document.getElementById('modal-info-ok').focus();
+}
+function fecharInfo() {
+  modalInfo.classList.remove('open');
+  btnInfo.focus();
+}
+btnInfo.addEventListener('click', abrirInfo);
+document.getElementById('modal-info-ok').addEventListener('click', fecharInfo);
+modalInfo.addEventListener('click', e => { if (e.target === modalInfo) fecharInfo(); }); // toque fora fecha
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && modalInfo.classList.contains('open')) fecharInfo();
 });
 
 document.getElementById('btn-pular-feedback').addEventListener('click', fecharFeedback);
@@ -575,7 +589,7 @@ async function carregarUpas() {
   const desdeRegressao = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
   const { data: finalizadosHistorico } = await sb
     .from('atendimentos')
-    .select('upa_id, tempo_permanencia_minutos, horario_saida')
+    .select('upa_id, tempo_permanencia_minutos, horario_chegada, horario_saida')
     .eq('status', 'finalizado')
     .gte('horario_saida', desdeRegressao);
 
