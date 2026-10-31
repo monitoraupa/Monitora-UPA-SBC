@@ -186,7 +186,7 @@ body{
   padding:40px 20px 44px;
   border-radius:0 0 28px 28px;
 }
-.home-header-top{ display:flex; justify-content:flex-end; margin-bottom:12px; }
+.home-header-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
 .icon-btn{
   width:38px; height:38px; border-radius:50%;
   background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.45);
@@ -334,3 +334,26 @@ body{
   .clock-time{ font-size:2.6rem; }
   .action-row--three .btn--pill{ flex:1 1 100%; }
 }
+
+/* ===================== CHIP DE LOCALIZAÇÃO (PAINEL) ===================== */
+.loc-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  background:#dbeafe; color:var(--blue-dark);
+  border-radius:14px; padding:6px 11px;
+  font-size:0.72rem; font-weight:700; line-height:1.2;
+}
+.loc-chip svg{ flex-shrink:0; color:var(--blue-accent); }
+
+/* ===================== ENDEREÇO NOS CARDS ===================== */
+.upa-name-row{ display:flex; align-items:center; gap:4px; }
+.addr-btn{
+  background:none; border:none; padding:4px 4px 4px 0; margin-left:-2px;
+  color:#b6bcc6; cursor:pointer; line-height:0; flex-shrink:0;
+}
+.addr-btn.open{ color:var(--blue-accent); }
+.addr-btn svg{ width:12px; height:12px; }
+.upa-endereco{
+  display:none; color:#4b5563; font-size:0.76rem; line-height:1.3;
+  margin-top:4px; max-width:210px;
+}
+.upa-endereco.open{ display:block; }
