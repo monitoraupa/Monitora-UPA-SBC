@@ -168,87 +168,42 @@ function calcularTempoMedioUpa(finalizadosDaUpa, emAndamentoDaUpa, agora) {
 }
 
 /* ============================================================
-   COMPONENTE DE APRENDIZADO DE MÁQUINA
+   MÉDIA HISTÓRICA POR FAIXA DE HORÁRIO
    ------------------------------------------------------------
-   Regressão linear simples (mínimos quadrados ordinários),
-   treinada a cada carregamento a partir do histórico real de
-   atendimentos de cada UPA:
+   Reforço usado só quando NÃO há dados recentes suficientes
+   (nenhum atendimento nas últimas 2h/6h) para a UPA.
 
-     tempo_permanencia_min  ~  a + b * hora_de_chegada_do_dia
+   Regra (simples de explicar):
+     "Nos últimos 30 dias, quanto as pessoas que chegaram nesta
+      mesma faixa de horário (hora atual ± 1h) ficaram na UPA,
+      em média?"
 
-   Este é o modelo supervisionado descrito no trabalho científico
-   (linha "IA & Tecnologia — Aprendizado de Máquina aplicado à
-   tomada de decisão"): aprende os coeficientes a e b a partir
-   dos dados observados, em vez de usar apenas constantes fixas.
-
-   Não substitui a heurística de recência/sinal ao vivo acima —
-   ela continua sendo o sinal mais confiável no curtíssimo prazo.
-   O modelo entra como reforço quando há POUCOS dados recentes
-   (poucas amostras nas últimas 2h/6h), usando o padrão histórico
-   por horário do dia para não cair em "sem dados".
+   - Usa a hora de CHEGADA (é o horário em que a pessoa entra na fila).
+   - Só atendimentos finalizados, com duração entre 3 min e 6h.
+   - Precisa de pelo menos 3 registros na faixa; senão, "sem dados".
    ============================================================ */
-const MIN_PONTOS_REGRESSAO = 5; // abaixo disso, o modelo não é confiável o suficiente pra usar
-const MIN_HORAS_DISTINTAS = 3;  // precisa de atendimentos em pelo menos 3 horas diferentes do dia
-const R2_MINIMO = 0.2;          // se o horário explica menos que isso, o modelo não é usado
+const DIAS_HISTORICO = 30;
+const MARGEM_HORAS = 1;          // faixa = hora atual ± 1h (3 horas no total)
+const MIN_AMOSTRAS_HORARIO = 3;  // mínimo de registros na faixa para mostrar a média
 
-
-function regressaoLinearSimples(pontosXY) {
-  const n = pontosXY.length;
-  if (n < MIN_PONTOS_REGRESSAO) return null;
-  if (new Set(pontosXY.map(p => p[0])).size < MIN_HORAS_DISTINTAS) return null; // pouca variedade de horários
-
-  let somaX = 0, somaY = 0, somaXY = 0, somaXX = 0;
-  pontosXY.forEach(([x, y]) => {
-    somaX += x; somaY += y; somaXY += x * y; somaXX += x * x;
-  });
-
-  const denominador = n * somaXX - somaX * somaX;
-  if (denominador === 0) return null; // todos os pontos no mesmo horário — não dá pra ajustar reta
-
-  const b = (n * somaXY - somaX * somaY) / denominador;
-  const a = (somaY - b * somaX) / n;
-
-  // R² — o quanto o horário do dia explica a variação do tempo de espera.
-  // Reportar isso na banca é mais honesto do que só apresentar a previsão.
-  const media = somaY / n;
-  let ssTot = 0, ssRes = 0;
-  pontosXY.forEach(([x, y]) => {
-    const previsto = a + b * x;
-    ssTot += (y - media) ** 2;
-    ssRes += (y - previsto) ** 2;
-  });
-  const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
-
-  if (r2 < R2_MINIMO) return null; // o horário explica pouco: melhor não mostrar previsão
-
-  return { a, b, n, r2 };
+// Distância entre duas horas do relógio (23h e 0h estão a 1h uma da outra).
+function distanciaEntreHoras(h1, h2) {
+  const d = Math.abs(h1 - h2);
+  return Math.min(d, 24 - d);
 }
 
-/**
- * Treina um modelo por UPA usando TODO o histórico de atendimentos
- * finalizados (não só a janela curta), pois a regressão precisa de
- * volume de dados para captar o padrão por horário do dia.
- */
-function treinarModelosPorHorario(finalizadosPorUpa) {
-  const modelos = {};
-  Object.keys(finalizadosPorUpa).forEach(upaId => {
-    // X = hora em que a pessoa CHEGOU (não a de saída): o modelo responde
-    // "se eu chegar agora, quanto vou ficar?", então o dado precisa estar
-    // organizado pela hora de chegada.
-    const pontos = finalizadosPorUpa[upaId]
-      .filter(a => a.tempo_permanencia_minutos !== null && a.horario_chegada &&
-                   a.tempo_permanencia_minutos >= MIN_BLOQUEIO_MIN &&
-                   a.tempo_permanencia_minutos <= MAX_ATENDIMENTO_MIN)
-      .map(a => [new Date(a.horario_chegada).getHours(), a.tempo_permanencia_minutos]);
-    modelos[upaId] = regressaoLinearSimples(pontos);
-  });
-  return modelos;
-}
+function mediaHistoricaPorHorario(finalizados, horaAtualNum) {
+  const validos = finalizados.filter(a =>
+    a.horario_chegada &&
+    a.tempo_permanencia_minutos !== null &&
+    a.tempo_permanencia_minutos >= MIN_BLOQUEIO_MIN &&
+    a.tempo_permanencia_minutos <= MAX_ATENDIMENTO_MIN &&
+    distanciaEntreHoras(new Date(a.horario_chegada).getHours(), horaAtualNum) <= MARGEM_HORAS
+  );
+  if (validos.length < MIN_AMOSTRAS_HORARIO) return null;
 
-function preverPorRegressao(modelo, horaAtualNum) {
-  if (!modelo) return null;
-  const previsto = modelo.a + modelo.b * horaAtualNum;
-  return Math.max(0, previsto); // tempo de espera não pode ser negativo
+  const soma = validos.reduce((acc, a) => acc + a.tempo_permanencia_minutos, 0);
+  return { media: soma / validos.length, amostras: validos.length };
 }
 
 function parseHoraParaData(textoHHMM, base = new Date()) {
@@ -591,15 +546,14 @@ async function carregarUpas() {
     .eq('status', 'em_andamento')
     .gte('horario_chegada', desde);
 
-  // Busca um histórico mais longo (30 dias) exclusivamente para TREINAR
-  // o modelo de regressão por horário do dia — precisa de mais volume
-  // e de mais variação de horário do que a janela curta usada acima.
-  const desdeRegressao = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Busca o histórico dos últimos 30 dias, usado só para a média
+  // histórica por faixa de horário (quando não há dados recentes).
+  const desdeHistorico = new Date(agora.getTime() - DIAS_HISTORICO * 24 * 60 * 60 * 1000).toISOString();
   const { data: finalizadosHistorico } = await sb
     .from('atendimentos')
     .select('upa_id, tempo_permanencia_minutos, horario_chegada, horario_saida')
     .eq('status', 'finalizado')
-    .gte('horario_saida', desdeRegressao);
+    .gte('horario_saida', desdeHistorico);
 
   const finalizadosPorUpa = {};
   (finalizados || []).forEach(a => { (finalizadosPorUpa[a.upa_id] ??= []).push(a); });
@@ -609,8 +563,6 @@ async function carregarUpas() {
 
   const finalizadosHistPorUpa = {};
   (finalizadosHistorico || []).forEach(a => { (finalizadosHistPorUpa[a.upa_id] ??= []).push(a); });
-
-  const modelosRegressao = treinarModelosPorHorario(finalizadosHistPorUpa);
 
   const upasComDados = (upas || []).map(u => {
     const resultado = calcularTempoMedioUpa(
@@ -623,19 +575,13 @@ async function carregarUpas() {
     let confiabilidade = resultado.confiabilidade;
     let origemEstimativa = 'heuristica';
 
-    // Componente de aprendizado de máquina: só entra em ação quando a
-    // heurística de curto prazo tem pouco ou nenhum dado — é o reforço
-    // baseado no padrão histórico aprendido por horário do dia.
-    const modelo = modelosRegressao[u.id];
-    if (modelo && (tempoMedio === null || confiabilidade === 'baixa' || confiabilidade === 'sem_dados')) {
-      const previsao = preverPorRegressao(modelo, agora.getHours());
-      // Previsão abaixo do mínimo aceito (3 min) não é um tempo real:
-      // ignora o modelo e deixa o card como "sem dados".
-      if (previsao !== null && previsao >= MIN_BLOQUEIO_MIN) {
-        tempoMedio = tempoMedio === null ? previsao : (tempoMedio + previsao) / 2;
-        confiabilidade = 'media';
-        origemEstimativa = 'regressao';
-      }
+    // Reforço: média histórica da mesma faixa de horário (hora atual ± 1h).
+    // Só entra quando a heurística de curto prazo tem pouco ou nenhum dado.
+    const hist = mediaHistoricaPorHorario(finalizadosHistPorUpa[u.id] || [], agora.getHours());
+    if (hist && (tempoMedio === null || confiabilidade === 'baixa' || confiabilidade === 'sem_dados')) {
+      tempoMedio = tempoMedio === null ? hist.media : (tempoMedio + hist.media) / 2;
+      confiabilidade = 'media';
+      origemEstimativa = 'historico';
     }
 
     const distanciaKm = state.posicaoUsuario
@@ -646,7 +592,6 @@ async function carregarUpas() {
       tempoMedio: u.em_reforma ? null : tempoMedio,
       confiabilidade: u.em_reforma ? 'sem_dados' : confiabilidade,
       origemEstimativa: u.em_reforma ? 'heuristica' : origemEstimativa,
-      modeloR2: modelo ? modelo.r2 : null,
       distanciaKm
     };
   });
@@ -681,8 +626,8 @@ function renderizarLista(upas) {
     let avisoConfianca = '';
     if (u.em_reforma) {
       avisoConfianca = '<div class="upa-confidence">unidade em reforma — sem registro de atendimentos</div>';
-    } else if (u.origemEstimativa === 'regressao') {
-      avisoConfianca = '<div class="upa-confidence">estimativa por padrão histórico do horário</div>';
+    } else if (u.origemEstimativa === 'historico') {
+      avisoConfianca = '<div class="upa-confidence">média dos últimos 30 dias neste horário</div>';
     } else if (u.confiabilidade === 'media' || u.confiabilidade === 'baixa') {
       avisoConfianca = '<div class="upa-confidence">baseado em poucos dados</div>';
     }
