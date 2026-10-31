@@ -183,10 +183,10 @@ body{
 .home-header{
   background:radial-gradient(circle at 25% 12%, var(--blue-light), var(--blue-mid) 55%, var(--blue-dark) 100%);
   color:#fff;
-  padding:40px 20px 44px;
+  padding:calc(env(safe-area-inset-top, 0px) + 14px) 20px 44px;
   border-radius:0 0 28px 28px;
 }
-.home-header-top{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; }
+.home-header-top{ display:flex; justify-content:flex-start; margin-bottom:14px; }
 .icon-btn{
   width:38px; height:38px; border-radius:50%;
   background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.45);
@@ -200,7 +200,8 @@ body{
   color:#4b5563; font-size:0.95rem; line-height:1.5; text-align:left;
   margin:4px 0 18px;
 }
-.home-greeting{ font-size:1.35rem; margin-bottom:6px; }
+.home-greeting-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.home-greeting{ font-size:1.35rem; }
 .home-subtitle{ font-weight:700; font-size:1.05rem; line-height:1.4; max-width:280px; }
 
 .home-body{ padding:20px; margin-top:-24px; }
@@ -338,11 +339,12 @@ body{
 /* ===================== CHIP DE LOCALIZAÇÃO (PAINEL) ===================== */
 .loc-chip{
   display:inline-flex; align-items:center; gap:6px;
-  background:#dbeafe; color:var(--blue-dark);
-  border-radius:14px; padding:6px 11px;
-  font-size:0.72rem; font-weight:700; line-height:1.2;
+  background:rgba(255,255,255,.14); color:#fff;
+  border:1px solid rgba(255,255,255,.28);
+  border-radius:14px; padding:5px 11px;
+  font-size:0.72rem; font-weight:600; line-height:1.2;
 }
-.loc-chip svg{ flex-shrink:0; color:var(--blue-accent); }
+.loc-chip svg{ flex-shrink:0; color:#bcd7f5; }
 
 /* ===================== ENDEREÇO NOS CARDS ===================== */
 .upa-name-row{ display:flex; align-items:center; gap:4px; }
