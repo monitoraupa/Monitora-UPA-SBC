@@ -157,6 +157,13 @@ body{
 .btn--solid-green{ background:var(--green); }
 .btn--solid-gray{ background:#8b93a1; }
 .btn--solid-red{ background:var(--red); }
+/* Azul suave/transparente (mesmo tom do "i" e do chip de localização) */
+.btn--soft-blue{
+  background:rgba(47,111,209,.16);
+  border:1.5px solid rgba(47,111,209,.45);
+  color:var(--blue-mid);
+}
+.btn--soft-blue:active{ background:rgba(47,111,209,.28); }
 
 /* ===================== BANNER DE ATENDIMENTO EM ANDAMENTO ===================== */
 .active-banner{
