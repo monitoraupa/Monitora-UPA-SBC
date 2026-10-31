@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#0d3f7a" />
 <title>Monitora UPA</title>
-<link rel="stylesheet" href="style.css?v=5" />
+<link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
 
@@ -139,8 +139,15 @@
   <!-- ======================================================= -->
   <!-- TELA 3 — INÍCIO (lista de UPAs próximas)                 -->
   <!-- ======================================================= -->
-  <section id="screen-home" class="screen screen--light">
+  <section id="screen-home" class="screen screen--light active">
     <header class="home-header">
+      <div class="home-header-top">
+        <button type="button" class="icon-btn home-info-btn" id="home-info-btn" aria-label="Sobre as informações do painel" aria-expanded="false" aria-controls="home-info-balloon">i</button>
+      </div>
+      <div class="home-info-balloon" id="home-info-balloon" role="note" hidden>
+        Os dados mostrados aqui vêm da experiência de outros pacientes e indicam quanto tempo, em média, cada unidade leva para concluir o atendimento. Ao chegar na UPA, registre o seu horário e deixe seu feedback: você ajuda quem está decidindo para onde ir. Sua participação é anônima e voluntária.
+      </div>
+
       <div class="active-banner" id="active-banner">
         <span id="active-banner-text">Atendimento em andamento: -- min</span>
         <span class="active-banner-cta">Finalizar?</span>
@@ -209,7 +216,7 @@
 
       <p class="notif-subtext fb-sub">Sua opinião ajuda outras pessoas e melhora o serviço.</p>
       <textarea id="feedback-comentario" maxlength="500"
-        placeholder="Escreva aqui (opcional)"></textarea>
+        placeholder="Quer deixar um comentário? Escreva aqui (opcional)"></textarea>
       <div class="action-row">
         <button class="btn btn--pill btn--solid-green" id="btn-enviar-feedback">Enviar</button>
         <button class="btn btn--pill btn--solid-gray" id="btn-pular-feedback">Agora não</button>
@@ -238,16 +245,15 @@
   </div>
 
   <!-- ======================================================= -->
-  <!-- BARRA DE PROTÓTIPO — apenas para navegar entre as telas  -->
-  <!-- durante os testes. Remova antes de publicar de verdade.  -->
+  <!-- BARRA DE NAVEGAÇÃO INFERIOR (Painel / Iniciar / Finalizar) -->
   <!-- ======================================================= -->
   <nav class="proto-nav">
-    <button data-goto="screen-home">🏠 Início</button>
-    <button data-goto="screen-checkin">✅ Check-in</button>
-    <button data-goto="screen-checkout">🚪 Check-out</button>
+    <button data-goto="screen-home" class="active"><span class="nav-ico">🏠</span><span class="nav-txt">Painel</span></button>
+    <button data-goto="screen-checkin"><span class="nav-ico">✅</span><span class="nav-txt">Iniciar atendimento</span></button>
+    <button data-goto="screen-checkout"><span class="nav-ico">🚪</span><span class="nav-txt">Finalizar atendimento</span></button>
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=11"></script>
 </body>
 </html>
